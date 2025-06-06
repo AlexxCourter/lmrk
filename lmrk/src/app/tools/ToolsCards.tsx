@@ -91,7 +91,7 @@ export default function ToolsCards({
                       key={list._id as string || idx}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer group transition"
                       style={{
-                        background: list.color || "#fff",
+                        background: typeof list.color === "string" ? list.color : "#fff",
                         cursor: "pointer",
                       }}
                       onClick={() => router.push("/shopping-lists")}

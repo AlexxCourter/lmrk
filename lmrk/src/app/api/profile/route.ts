@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/pages/api/auth/[...nextauth]";
+// import NextAuth from "next-auth";
 import { getUsersCollection } from "@/models/User";
+
+// Inline minimal NextAuth config for getServerSession
+const nextAuthOptions = {
+  providers: [],
+  session: { strategy: "jwt" },
+};
 
 // Simple sanitization function
 function sanitize(input: string) {
@@ -9,8 +15,10 @@ function sanitize(input: string) {
 }
 
 export async function POST(req: NextRequest) {
-  // Get session for authentication
-  const session = await getServerSession(authOptions);
+  const session = await getServerSession(
+    { req },
+    nextAuthOptions as Record<string, unknown>
+  ) as { user?: { email?: string } } | null;
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

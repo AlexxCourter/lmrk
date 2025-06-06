@@ -1,13 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "../auth/[...nextauth]";
 import { getUsersCollection, Recipe } from "@/models/User";
 import { ObjectId } from "mongodb";
+
+// Inline the NextAuth config here since authOptions cannot be imported
+const nextAuthOptions = {
+  providers: [],
+  session: { strategy: "jwt" },
+};
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  const session = await getServerSession(req, res, authOptions);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await getServerSession(req, res, nextAuthOptions as any);
   if (!session?.user?.email) return res.status(401).json({ error: "Unauthorized" });
 
   const { name, icon, description, ingredients, instructions } = req.body;

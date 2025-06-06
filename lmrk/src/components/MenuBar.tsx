@@ -61,15 +61,16 @@ export default function MenuBar() {
           <div className="relative">
             <button
               className="ml-2 rounded-full border-2 border-white w-10 h-10 overflow-hidden bg-white flex items-center justify-center cursor-pointer"
-              title={session.user.username ?? "Profile"}
+              title={session.user.name ?? "Profile"}
               onClick={() =>
                 setOpenMenu(openMenu === "profile" ? null : "profile")
               }
             >
               {/* Use icon id if present, fallback to gray circle */}
-              {session.user.profileImage && PROFILE_ICONS[session.user.profileImage] ? (
+              {/* Use 'image' property as the icon key, or fallback to gray circle */}
+              {session.user.image && PROFILE_ICONS[session.user.image] ? (
                 (() => {
-                  const Icon = PROFILE_ICONS[session.user.profileImage as string];
+                  const Icon = PROFILE_ICONS[session.user.image as string];
                   return <Icon className="text-2xl text-purple-700" />;
                 })()
               ) : (

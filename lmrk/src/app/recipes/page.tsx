@@ -5,8 +5,33 @@ import { useSession } from "next-auth/react";
 import RecipeModal from "@/components/RecipeModal";
 import { useRef } from "react";
 
+// Extend the user type to include recipes
+type Recipe = {
+  id: string;
+  name: string;
+  description?: string;
+  ingredients?: { id: string; name: string; quantity?: string; unit?: string }[];
+  instructions?: string[];
+  [key: string]: unknown;
+};
+
+type UserWithRecipes = {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  recipes?: Recipe[];
+  activeList?: string;
+  shoppingLists?: Record<string, unknown>[];
+};
+
+type SessionWithRecipes = {
+  user?: UserWithRecipes;
+  [key: string]: unknown;
+};
+
 export default function RecipesPage() {
-  const { data: session, update } = useSession();
+  const { data: sessionData, update } = useSession();
+  const session = sessionData as SessionWithRecipes | null;
 
   // Use recipes from the user's session data
   const recipes = session?.user?.recipes || [];
@@ -77,7 +102,7 @@ export default function RecipesPage() {
             (list._id?.toString?.() || list._id) ===
             (session?.user?.activeList?.toString?.() || session?.user?.activeList)
         );
-        listName = activeList?.name || "shopping list";
+        listName = typeof activeList?.name === "string" ? activeList.name : "shopping list";
         showToast(`${addedCount} items added to ${listName}`);
       } else {
         alert("Failed to add ingredients to shopping list.");
@@ -204,12 +229,13 @@ export default function RecipesPage() {
           >
             <div className="flex items-center gap-2 mb-2">
               <FaAppleAlt className="text-purple-700 text-xl" />
-              <h2 className="text-lg font-bold">{recipe.name}</h2>
+              <h2 className="text-lg font-bold">{typeof recipe.name === "string" ? recipe.name : ""}</h2>
             </div>
             <div className="text-gray-700 text-sm mb-2 flex-1">
-              {recipe.description?.slice(0, 100) ||
-                "No description provided."}
-              {recipe.description && recipe.description.length > 100 ? "..." : ""}
+              {typeof recipe.description === "string"
+                ? recipe.description.slice(0, 100)
+                : "No description provided."}
+              {typeof recipe.description === "string" && recipe.description.length > 100 ? "..." : ""}
             </div>
             <div className="absolute bottom-3 left-4 text-xs text-gray-400">
               Click card for full recipe
@@ -240,17 +266,19 @@ export default function RecipesPage() {
             </button>
             <div className="flex items-center gap-2 mb-2">
               <FaAppleAlt className="text-purple-700 text-2xl" />
-              <h2 className="text-xl font-bold">{selected.name}</h2>
+              <h2 className="text-xl font-bold">{typeof selected.name === "string" ? selected.name : ""}</h2>
             </div>
             <div className="mb-4 text-gray-700">
-              {selected.description || "No description provided."}
+              {typeof selected.description === "string"
+                ? selected.description
+                : "No description provided."}
             </div>
             <div className="mb-4">
               <h3 className="font-semibold mb-1">Ingredients:</h3>
               <ul className="list-disc list-inside text-sm text-gray-700">
-                {selected.ingredients?.map((ing: Record<string, unknown>) => (
+                {(Array.isArray(selected.ingredients) ? selected.ingredients : []).map((ing: Record<string, unknown>) => (
                   <li key={ing.id as string}>
-                    {ing.name} - {ing.quantity} {ing.unit}
+                    {String(ing.name)} - {String(ing.quantity ?? "")} {String(ing.unit ?? "")}
                   </li>
                 ))}
               </ul>
@@ -258,7 +286,7 @@ export default function RecipesPage() {
             <div>
               <h3 className="font-semibold mb-1">Instructions:</h3>
               <ol className="list-decimal list-inside text-sm text-gray-700 space-y-1">
-                {selected.instructions?.map((step: string, idx: number) => (
+                {(Array.isArray(selected.instructions) ? selected.instructions : []).map((step: string, idx: number) => (
                   <li key={idx}>{step}</li>
                 ))}
               </ol>

@@ -4,10 +4,32 @@ import { useState, useRef, useEffect } from "react";
 import { FaStar, FaPencilAlt, FaBars } from "react-icons/fa";
 import ShoppingListModal from "@/components/ShoppingListModal";
 
+type ShoppingListItem = {
+  _id: string;
+  name: string;
+  checked?: boolean;
+  quantity?: number;
+};
+
+type ShoppingList = {
+  _id: string;
+  name: string;
+  color?: string;
+  items: ShoppingListItem[];
+};
+
+type SessionUser = {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  shoppingLists?: ShoppingList[];
+  activeList?: string;
+};
+
 export default function ShoppingListPage() {
   const { data: session, update } = useSession();
-  const shoppingLists = session?.user?.shoppingLists || [];
-  const activeListId = session?.user?.activeList;
+  const shoppingLists = (session?.user as SessionUser)?.shoppingLists || [];
+  const activeListId = (session?.user as SessionUser)?.activeList;
 
   // Find the index of the active list, or default to 0 if none
   const defaultIdx =
@@ -50,7 +72,7 @@ export default function ShoppingListPage() {
   // Close sidebar on outside click or swipe left (mobile)
   useEffect(() => {
     if (!sidebarOpen) return;
-    function handleClick() {
+    function handleClick(event: MouseEvent) {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
         setSidebarOpen(false);
       }
@@ -70,7 +92,7 @@ export default function ShoppingListPage() {
         document.removeEventListener("touchmove", onTouchMove);
       }, { once: true });
     }
-    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("mousedown", handleClick as EventListener);
     document.addEventListener("touchstart", handleTouchStart, { passive: false });
     return () => {
       document.removeEventListener("mousedown", handleClick);
@@ -156,19 +178,19 @@ export default function ShoppingListPage() {
                 const isListActive = activeListId === (list._id?.toString?.() || list._id);
                 return (
                   <li
-                    key={list._id || idx}
+                    key={list._id ? String(list._id) : String(idx)}
                     className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 ${
                       selectedIdx === idx
                         ? "border-purple-700"
                         : "border-white"
                     } flex items-center justify-between`}
                     style={{
-                      background: list.color || "#fff",
+                      background: typeof list.color === "string" ? list.color : "#fff",
                       cursor: "pointer",
                     }}
                     onClick={() => setSelectedIdx(idx)}
                   >
-                    <span>{list.name || `List ${idx + 1}`}</span>
+                    <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
                     {isListActive && (
                       <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
                     )}
@@ -198,14 +220,14 @@ export default function ShoppingListPage() {
                 const isListActive = activeListId === (list._id?.toString?.() || list._id);
                 return (
                   <li
-                    key={list._id || idx}
+                    key={list._id ? String(list._id) : String(idx)}
                     className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 ${
                       selectedIdx === idx
                         ? "border-purple-700"
                         : "border-white"
                     } flex items-center justify-between`}
                     style={{
-                      background: list.color || "#fff",
+                      background: typeof list.color === "string" ? list.color : "#fff",
                       cursor: "pointer",
                     }}
                     onClick={() => {
@@ -213,7 +235,7 @@ export default function ShoppingListPage() {
                       setSidebarOpen(false);
                     }}
                   >
-                    <span>{list.name || `List ${idx + 1}`}</span>
+                    <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
                     {isListActive && (
                       <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
                     )}
@@ -337,27 +359,31 @@ export default function ShoppingListPage() {
               {selectedList.items && selectedList.items.length > 0 ? (
                 <ul className="space-y-3">
                   {selectedList.items.map((item: Record<string, unknown>, idx: number) => (
-                    <li key={item._id || idx} className="flex items-center gap-3">
+                    <li key={item._id ? String(item._id) : String(idx)} className="flex items-center gap-3">
                       <input
-                        type="checkbox"
-                        checked={!!item.checked}
-                        disabled={loading}
-                        onChange={e => handleCheck(idx, e.target.checked)}
-                        className="w-5 h-5 accent-purple-700"
+                      type="checkbox"
+                      checked={!!item.checked}
+                      disabled={loading}
+                      onChange={e => handleCheck(idx, e.target.checked)}
+                      className="w-5 h-5 accent-purple-700"
                       />
                       <span
-                        className={`text-lg font-semibold transition-all ${
-                          item.checked
-                            ? "text-gray-400 line-through"
-                            : "text-gray-800"
-                        }`}
+                      className={`text-lg font-semibold transition-all ${
+                        item.checked
+                        ? "text-gray-400 line-through"
+                        : "text-gray-800"
+                      }`}
                       >
-                        {item.name}
+                      {typeof item.name === "string"
+                        ? item.name
+                        : item.name !== undefined && item.name !== null
+                        ? String(item.name)
+                        : ""}
                       </span>
-                      {item.quantity && (
-                        <span className={`ml-2 text-base ${item.checked ? "text-gray-300" : "text-gray-600"}`}>
-                          x{item.quantity}
-                        </span>
+                      {item.quantity !== undefined && item.quantity !== null && (
+                      <span className={`ml-2 text-base ${item.checked ? "text-gray-300" : "text-gray-600"}`}>
+                        x{String(item.quantity)}
+                      </span>
                       )}
                     </li>
                   ))}
@@ -376,7 +402,14 @@ export default function ShoppingListPage() {
             <ShoppingListModal
               open={editModalOpen}
               onClose={() => setEditModalOpen(false)}
-              initialData={selectedList}
+              initialData={{
+                ...selectedList,
+                items: selectedList.items?.map(item => ({
+                  ...item,
+                  quantity: item.quantity !== undefined ? String(item.quantity) : "",
+                  checked: !!item.checked,
+                })),
+              }}
               onSave={handleEditSave}
               isEdit
             />

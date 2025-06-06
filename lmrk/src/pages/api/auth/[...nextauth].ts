@@ -1,44 +1,11 @@
-import NextAuth from "next-auth";
+import NextAuth from "next-auth/next";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { AuthOptions } from "next-auth";
 import { getUsersCollection } from "@/models/User";
 import bcrypt from "bcryptjs";
 
-// Extend NextAuth types to include custom user fields
-declare module "next-auth" {
-  interface User {
-    username?: string;
-    profileImage?: string;
-    bio?: string;
-    recipes?: Record<string, unknown>[]; // was any[]
-    shoppingLists?: Record<string, unknown>[]; // was any[]
-    activeList?: Record<string, unknown> | null; // was any
-  }
-  interface Session {
-    user?: {
-      username?: string;
-      profileImage?: string;
-      email?: string;
-      name?: string;
-      image?: string;
-      [key: string]: unknown;
-    };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    username?: string;
-    profileImage?: string;
-    bio?: string;
-    recipes?: Record<string, unknown>[]; // was any[]
-    shoppingLists?: Record<string, unknown>[]; // was any[]
-    activeList?: Record<string, unknown> | null; // was any
-  }
-}
-
-export const authOptions: AuthOptions = {
+// --- NextAuth Configuration ---
+const nextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -55,23 +22,24 @@ export const authOptions: AuthOptions = {
         const users = await getUsersCollection();
         const user = await users.findOne({ email: credentials.email });
         if (!user) return null;
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!isValid) return null;
-        // Map fields for session
         return {
-          id: user._id.toString(),
+          id: user._id?.toString(),
+          _id: user._id?.toString(),
+          createdAt: user.createdAt,
           email: user.email,
           username: user.username,
           profileImage: user.profileImage,
           bio: user.bio,
+          preferences: user.preferences,
           recipes: user.recipes,
           shoppingLists: user.shoppingLists,
-          activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
-            ? user.activeList
-            : null, // Ensure it's an object or null/undefined
+          passwordHash: user.passwordHash,
+          referral: user.referral,
+          activeList: typeof user.activeList === "string" ? user.activeList : null,
+          name: user.username,
+          image: user.profileImage,
         };
       },
     }),
@@ -85,16 +53,14 @@ export const authOptions: AuthOptions = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Only run for Google provider
       if (account?.provider === "google") {
         const users = await getUsersCollection();
         if (!user.email) throw new Error("Google account did not return an email.");
-        const existing = await users.findOne({ email: user.email as string });
+        const existing = await users.findOne({ email: user.email });
         if (!existing) {
-          // Create a new user document for Google sign-in
           await users.insertOne({
             email: user.email,
-            username: user.name || user.email.split("@")[0],
+            username: user.name || (typeof user.email === "string" ? user.email.split("@")[0] : ""),
             profileImage: user.image || "",
             bio: "",
             recipes: [],
@@ -108,7 +74,6 @@ export const authOptions: AuthOptions = {
             },
             passwordHash: "",
             referral: "",
-            // Add any other default fields here
           });
         }
       }
@@ -116,44 +81,42 @@ export const authOptions: AuthOptions = {
     },
     async jwt({ token, user }) {
       if (user) {
-        token = {
-          ...token,
-          username: user.username,
-          profileImage: user.profileImage,
-          bio: user.bio,
-          recipes: user.recipes,
-          shoppingLists: user.shoppingLists,
-          email: user.email,
-          activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
-            ? user.activeList
-            : null,
-        };
+        token._id = user._id;
+        token.createdAt = user.createdAt;
+        token.username = user.username;
+        token.profileImage = user.profileImage;
+        token.bio = user.bio;
+        token.preferences = user.preferences;
+        token.recipes = user.recipes;
+        token.shoppingLists = user.shoppingLists;
+        token.passwordHash = user.passwordHash;
+        token.referral = user.referral;
+        token.activeList = user.activeList ?? null;
+        token.email = user.email;
+        token.name = user.name;
+        token.image = user.image;
       }
       return token;
     },
-    async session({ session }: { session: import("next-auth").Session }) {
-      // Always fetch latest user data from DB using email
-      if (session.user?.email) {
-        const users = await getUsersCollection();
-        const user = await users.findOne({ email: session.user.email });
-        if (user) {
-          session.user = {
-            ...session.user,
-            username: user.username,
-            profileImage: user.profileImage,
-            bio: user.bio,
-            recipes: user.recipes,
-            shoppingLists: user.shoppingLists,
-            activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
-              ? user.activeList
-              : null,
-          };
-        }
+    async session({ session, token }) {
+      if (session.user) {
+        session.user._id = token._id as string | undefined;
+        session.user.createdAt = token.createdAt as string | undefined;
+        session.user.username = token.username as string | undefined;
+        session.user.profileImage = token.profileImage as string | undefined;
+        session.user.bio = token.bio as string | undefined;
+        session.user.preferences = token.preferences as Record<string, unknown> | undefined;
+        session.user.recipes = token.recipes as Record<string, unknown>[] | undefined;
+        session.user.shoppingLists = token.shoppingLists as Record<string, unknown>[] | undefined;
+        session.user.passwordHash = token.passwordHash as string | undefined;
+        session.user.referral = token.referral as string | undefined;
+        session.user.activeList = token.activeList as string | null | undefined;
+        session.user.email = token.email as string | undefined;
+        session.user.name = token.name as string | undefined;
+        session.user.image = token.image as string | undefined;
       }
       return session;
     },
   },
 };
-
-const handler = NextAuth(authOptions);
-export default handler;
+export default NextAuth(nextAuthOptions);

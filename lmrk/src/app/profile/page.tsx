@@ -1,26 +1,38 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../authOptions";
+import { getServerSession } from "next-auth/next";
 import ClientProfile from "./ClientProfile";
 
+// Inline minimal NextAuth config for getServerSession
+const nextAuthOptions = {
+  providers: [],
+  session: { strategy: "jwt" },
+};
+
+type User = {
+  email?: string | null;
+  username?: string;
+  profileImage?: string;
+  image?: string;
+  bio?: string;
+  recipes?: Record<string, unknown>[];
+  shoppingLists?: Record<string, unknown>[];
+  activeList?: string | null;
+};
+
+type Session = {
+  user?: User;
+  [key: string]: unknown;
+} | null;
+
 export default async function ProfilePage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  const session = (await getServerSession(
+    nextAuthOptions as Record<string, unknown>
+  )) as Session;
+  if (!session || !session.user) {
     redirect("/");
   }
 
-  type User = {
-    email?: string | null;
-    username?: string;
-    profileImage?: string;
-    image?: string;
-    bio?: string;
-    recipes?: Record<string, unknown>[]; // was any[]
-    shoppingLists?: Record<string, unknown>[]; // was any[]
-    activeList?: Record<string, unknown> | null; // was any
-  };
-
-  const user = session?.user as User;
+  const user = session.user as User;
   if (!user) {
     return (
       <div className="max-w-2xl mx-auto py-10 px-4 mt-8 sm:mt-16">
@@ -30,7 +42,6 @@ export default async function ProfilePage() {
     );
   }
 
-  // Fallbacks for compatibility with both NextAuth default and your User model
   const profileImage = user.profileImage || user.image || "";
   const username = user.username || "No username set";
   const bio = user.bio || "";

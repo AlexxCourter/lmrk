@@ -32,8 +32,13 @@ export default function FloatingMenu() {
   if (!session?.user) return null;
 
   // Find active list and count unchecked items
-  const activeListId = session.user.activeList;
-  const shoppingLists = session.user.shoppingLists || [];
+  type UserWithLists = typeof session.user & {
+    activeList?: string;
+    shoppingLists?: Record<string, unknown>[];
+  };
+  const user = session.user as UserWithLists;
+  const activeListId = user.activeList;
+  const shoppingLists = user.shoppingLists || [];
   const activeList = shoppingLists.find(
     (list: Record<string, unknown>) =>
       (list._id?.toString?.() || list._id) === (activeListId?.toString?.() || activeListId)

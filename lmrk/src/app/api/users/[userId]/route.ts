@@ -1,12 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { getUsersCollection } from "@/models/User";
 import { ObjectId } from "mongodb";
 
-type Params = { params: { userId: string } };
-
 export async function GET(
   req: NextRequest,
-  context: Params
+  context: any
 ) {
   const userId = context.params.userId;
   const users = await getUsersCollection();

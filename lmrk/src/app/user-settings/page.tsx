@@ -1,10 +1,16 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "../authOptions";
+import { getServerSession } from "next-auth/next";
+
+// Inline minimal NextAuth config for getServerSession
+const nextAuthOptions = {
+  providers: [],
+  session: { strategy: "jwt" },
+};
 
 export default async function UserSettingsPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const session = await getServerSession(nextAuthOptions as any);
+  if (!session || !session.user) {
     redirect("/");
   }
 

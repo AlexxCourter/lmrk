@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import {
   FaAppleAlt, FaCarrot, FaFish, FaDrumstickBite, FaIceCream, FaPizzaSlice,
   FaBreadSlice, FaCheese, FaEgg, FaLemon, FaTimes
@@ -62,7 +62,7 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
   };
 
   // Placeholder for submit logic
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // API call to save recipe
     const res = await fetch("/api/recipes/add", {

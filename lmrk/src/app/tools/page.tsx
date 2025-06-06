@@ -1,19 +1,21 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../authOptions";
-import { FaPlus } from "react-icons/fa";
 import ToolsCards from "./ToolsCards";
 
-function toPlainObject(obj: any): any {
+function toPlainObject(obj: unknown): unknown {
   if (Array.isArray(obj)) {
     return obj.map(toPlainObject);
   }
   if (obj && typeof obj === "object") {
-    const newObj: any = {};
+    const newObj: Record<string, unknown> = {};
     for (const key in obj) {
+      // @ts-expect-error: dynamic key
       if (key === "_id" && obj[key]?.toString) {
+        // @ts-expect-error: dynamic key
         newObj[key] = obj[key].toString();
       } else {
+        // @ts-expect-error: dynamic key
         newObj[key] = toPlainObject(obj[key]);
       }
     }

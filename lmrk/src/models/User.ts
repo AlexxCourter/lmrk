@@ -63,14 +63,14 @@ export type Recipe = {
 };
 
 export type ShoppingListItem = {
-  _id?: any;
+  _id?: ObjectId | string;
   name: string;
   quantity: string;
   checked: boolean;
 };
 
 export type ShoppingList = {
-  _id?: any;
+  _id?: ObjectId | string;
   name: string;
   color: string; // hex or color name
   dateCreated: string; // ISO string or formatted

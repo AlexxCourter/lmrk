@@ -15,9 +15,9 @@ export default async function ProfilePage() {
     profileImage?: string;
     image?: string;
     bio?: string;
-    recipes?: any[];
-    shoppingLists?: any[];
-    activeList?: any;
+    recipes?: Record<string, unknown>[]; // was any[]
+    shoppingLists?: Record<string, unknown>[]; // was any[]
+    activeList?: Record<string, unknown> | null; // was any
   };
 
   const user = session?.user as User;

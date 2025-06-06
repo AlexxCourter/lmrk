@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import { FaPencilAlt, FaUser, FaUserTie, FaUserNurse, FaUserAstronaut, FaUserSecret, FaUserGraduate } from "react-icons/fa";
 
@@ -37,7 +36,6 @@ export default function ClientProfile({
   const [error, setError] = useState("");
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [selectedIconId, setSelectedIconId] = useState(profileImage || "FaUser");
-  const router = useRouter();
   const { update: updateSession } = useSession();
 
   // Exit edit mode when component unmounts (as router.events is not available in app directory)
@@ -93,7 +91,7 @@ export default function ClientProfile({
       });
       await updateSession?.();
       setEditMode(false);
-    } catch (e) {
+    } catch {
       setError("Failed to save profile.");
     } finally {
       setSaving(false);

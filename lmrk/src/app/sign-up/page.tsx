@@ -100,7 +100,7 @@ export default function SignUpPage() {
         const data = await res.json();
         setError(data.error || "Sign up failed.");
       }
-    } catch (err) {
+    } catch {
       setError("Sign up failed. Please try again.");
     } finally {
       setLoading(false);

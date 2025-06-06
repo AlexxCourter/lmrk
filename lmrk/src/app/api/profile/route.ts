@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const { username, bio, profileImage } = await req.json();
 
   // Only update fields that are present in the request
-  const updateFields: any = {};
+  const updateFields: Record<string, unknown> = {};
   if (typeof username === "string")
     updateFields.username = sanitize(username).slice(0, 32);
   if (typeof bio === "string") updateFields.bio = sanitize(bio).slice(0, 200);

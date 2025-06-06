@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     name,
     color,
     dateCreated,
-    items: items.map((item: any) => ({
+    items: items.map((item: Record<string, unknown>) => ({
       _id: new ObjectId(),
       name: item.name,
       quantity: item.quantity,

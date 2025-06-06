@@ -35,12 +35,12 @@ export default function FloatingMenu() {
   const activeListId = session.user.activeList;
   const shoppingLists = session.user.shoppingLists || [];
   const activeList = shoppingLists.find(
-    (list: any) =>
+    (list: Record<string, unknown>) =>
       (list._id?.toString?.() || list._id) === (activeListId?.toString?.() || activeListId)
   );
   const uncheckedCount =
     activeList && Array.isArray(activeList.items)
-      ? activeList.items.filter((item: any) => !item.checked).length
+      ? (activeList.items as Record<string, unknown>[]).filter((item: Record<string, unknown>) => !item.checked).length
       : 0;
 
   return (

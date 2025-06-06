@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!user?.activeList) return res.status(400).json({ error: "No active shopping list set" });
 
   // Prepare items to add
-  const items = ingredients.map((ing: any) => ({
+  const items = ingredients.map((ing: Record<string, unknown>) => ({
     _id: new ObjectId(),
     name: ing.name,
     quantity: "1",

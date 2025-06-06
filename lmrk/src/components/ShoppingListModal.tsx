@@ -34,7 +34,7 @@ type ShoppingListModalProps = {
     dateCreated?: string;
     items?: ShoppingListItem[];
   };
-  onSave?: (data: any) => void;
+  onSave?: (data: Record<string, unknown>) => void;
   isEdit?: boolean;
 };
 
@@ -62,11 +62,11 @@ export default function ShoppingListModal({
         setDateCreated(formatDate(initialData.dateCreated || new Date()));
         setItems(
           Array.isArray(initialData.items) && initialData.items.length > 0
-            ? initialData.items.map((item: any) => ({
-                name: item.name || "",
-                quantity: item.quantity || "",
+            ? initialData.items.map((item: Record<string, unknown>) => ({
+                name: typeof item.name === "string" ? item.name : "",
+                quantity: typeof item.quantity === "string" ? item.quantity : "",
                 checked: !!item.checked,
-                _id: item._id,
+                _id: typeof item._id === "string" ? item._id : undefined,
               }))
             : [{ name: "", quantity: "", checked: false }]
         );
@@ -95,7 +95,7 @@ export default function ShoppingListModal({
     setItems(items => items.filter((_, i) => i !== idx));
   };
 
-  const handleSubmit = async (e: any) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
       name,
@@ -145,7 +145,7 @@ export default function ShoppingListModal({
               <span className="text-xs text-gray-500 mt-1">Select color</span>
               {showColorPicker && (
                 <div className="absolute mt-2 bg-white border rounded-lg shadow-lg p-4 grid grid-cols-3 gap-6 z-50 left-1/2 -translate-x-1/2 min-w-[160px]">
-                  {COLORS.map((c, idx) => (
+                  {COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
@@ -170,25 +170,25 @@ export default function ShoppingListModal({
             <div className="mb-4">
               <h3 className="font-semibold mb-1">Items:</h3>
               <div className="space-y-2">
-                {items.map((item, idx) => (
-                  <div key={item._id || idx} className="flex items-center gap-2">
+                {items.map((item, index) => (
+                  <div key={item._id || index} className="flex items-center gap-2">
                     <input
                       className="flex-1 border rounded p-1 text-sm"
                       placeholder="Item name"
                       value={item.name}
-                      onChange={e => handleItemChange(idx, "name", e.target.value)}
+                      onChange={e => handleItemChange(index, "name", e.target.value)}
                       required
                     />
                     <input
                       className="w-20 border rounded p-1 text-sm"
                       placeholder="Quantity"
                       value={item.quantity}
-                      onChange={e => handleItemChange(idx, "quantity", e.target.value)}
+                      onChange={e => handleItemChange(index, "quantity", e.target.value)}
                     />
                     <button
                       type="button"
                       className="ml-1 text-gray-400 hover:text-red-500"
-                      onClick={() => handleRemoveItem(idx)}
+                      onClick={() => handleRemoveItem(index)}
                       aria-label="Delete item"
                       disabled={items.length === 1}
                     >

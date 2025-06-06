@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
-import type { NextAuthOptions } from "next-auth";
+import type { AuthOptions } from "next-auth";
 import { getUsersCollection } from "@/models/User";
 import bcrypt from "bcryptjs";
 
@@ -11,19 +11,18 @@ declare module "next-auth" {
     username?: string;
     profileImage?: string;
     bio?: string;
-    recipes?: any[];
-    shoppingLists?: any[];
-    activeList?: any;
+    recipes?: Record<string, unknown>[]; // was any[]
+    shoppingLists?: Record<string, unknown>[]; // was any[]
+    activeList?: Record<string, unknown> | null; // was any
   }
   interface Session {
     user?: {
-      email?: string | null;
       username?: string;
       profileImage?: string;
-      bio?: string;
-      recipes?: any[];
-      shoppingLists?: any[];
-      activeList?: any;
+      email?: string;
+      name?: string;
+      image?: string;
+      [key: string]: unknown;
     };
   }
 }
@@ -33,13 +32,13 @@ declare module "next-auth/jwt" {
     username?: string;
     profileImage?: string;
     bio?: string;
-    recipes?: any[];
-    shoppingLists?: any[];
-    activeList?: any;
+    recipes?: Record<string, unknown>[]; // was any[]
+    shoppingLists?: Record<string, unknown>[]; // was any[]
+    activeList?: Record<string, unknown> | null; // was any
   }
 }
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: AuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -70,7 +69,9 @@ export const authOptions: NextAuthOptions = {
           bio: user.bio,
           recipes: user.recipes,
           shoppingLists: user.shoppingLists,
-          activeList: user.activeList, // <-- Ensure this is included
+          activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
+            ? user.activeList
+            : null, // Ensure it's an object or null/undefined
         };
       },
     }),
@@ -83,7 +84,7 @@ export const authOptions: NextAuthOptions = {
     signIn: "/log-in",
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Only run for Google provider
       if (account?.provider === "google") {
         const users = await getUsersCollection();
@@ -92,23 +93,23 @@ export const authOptions: NextAuthOptions = {
         if (!existing) {
           // Create a new user document for Google sign-in
           await users.insertOne({
-                      email: user.email,
-                      username: user.name || user.email.split("@")[0],
-                      profileImage: user.image || "",
-                      bio: "",
-                      recipes: [],
-                      shoppingLists: [],
-                      activeList: undefined,
-                      createdAt: new Date().toISOString(),
-                      preferences: {
-                        theme: "light",
-                        notifications: true,
-                        language: "en",
-                      },
-                      passwordHash: "",
-                      referral: "",
-                      // Add any other default fields here
-                    });
+            email: user.email,
+            username: user.name || user.email.split("@")[0],
+            profileImage: user.image || "",
+            bio: "",
+            recipes: [],
+            shoppingLists: [],
+            activeList: undefined,
+            createdAt: new Date().toISOString(),
+            preferences: {
+              theme: "light",
+              notifications: true,
+              language: "en",
+            },
+            passwordHash: "",
+            referral: "",
+            // Add any other default fields here
+          });
         }
       }
       return true;
@@ -123,12 +124,14 @@ export const authOptions: NextAuthOptions = {
           recipes: user.recipes,
           shoppingLists: user.shoppingLists,
           email: user.email,
-          activeList: user.activeList, // <-- Add this line
+          activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
+            ? user.activeList
+            : null,
         };
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session }: { session: import("next-auth").Session }) {
       // Always fetch latest user data from DB using email
       if (session.user?.email) {
         const users = await getUsersCollection();
@@ -141,7 +144,9 @@ export const authOptions: NextAuthOptions = {
             bio: user.bio,
             recipes: user.recipes,
             shoppingLists: user.shoppingLists,
-            activeList: user.activeList, // <-- Add this line
+            activeList: (user.activeList && typeof user.activeList === "object" && !Array.isArray(user.activeList))
+              ? user.activeList
+              : null,
           };
         }
       }

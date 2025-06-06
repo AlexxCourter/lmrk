@@ -2,7 +2,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { FaUser, FaUserTie, FaUserNurse, FaUserAstronaut, FaUserSecret, FaUserGraduate } from "react-icons/fa";
 import { FaListUl } from "react-icons/fa"; // Use as the LMRK logo icon
 

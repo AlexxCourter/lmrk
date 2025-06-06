@@ -15,7 +15,7 @@ export default function ShoppingListPage() {
       ? null
       : activeListId
         ? shoppingLists.findIndex(
-            (list: any) =>
+            (list: Record<string, unknown>) =>
               (list._id?.toString?.() || list._id) === (activeListId?.toString?.() || activeListId)
           )
         : 0;
@@ -37,7 +37,7 @@ export default function ShoppingListPage() {
       setSelectedIdx(null);
     } else if (activeListId) {
       const idx = shoppingLists.findIndex(
-        (list: any) =>
+        (list: Record<string, unknown>) =>
           (list._id?.toString?.() || list._id) === (activeListId?.toString?.() || activeListId)
       );
       setSelectedIdx(idx >= 0 ? idx : 0);
@@ -50,31 +50,31 @@ export default function ShoppingListPage() {
   // Close sidebar on outside click or swipe left (mobile)
   useEffect(() => {
     if (!sidebarOpen) return;
-    function handleClick(e: MouseEvent) {
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) {
+    function handleClick() {
+      if (sidebarRef.current && !sidebarRef.current.contains(event.target as Node)) {
         setSidebarOpen(false);
       }
     }
-    function handleTouch(e: TouchEvent) {
-      let startX: number | null = null;
-      function onTouchMove(ev: TouchEvent) {
-        if (startX === null) startX = ev.touches[0].clientX;
-        const diff = ev.touches[0].clientX - startX;
-        if (diff < -50) { // swipe left
-          setSidebarOpen(false);
-          document.removeEventListener("touchmove", onTouchMove);
-        }
+    let startX: number | null = null;
+    function onTouchMove(ev: TouchEvent) {
+      if (startX === null) startX = ev.touches[0].clientX;
+      const diff = ev.touches[0].clientX - startX;
+      if (diff < -50) { // swipe left
+        setSidebarOpen(false);
+        document.removeEventListener("touchmove", onTouchMove);
       }
+    }
+    function handleTouchStart() {
       document.addEventListener("touchmove", onTouchMove, { passive: false });
       document.addEventListener("touchend", () => {
         document.removeEventListener("touchmove", onTouchMove);
       }, { once: true });
     }
     document.addEventListener("mousedown", handleClick);
-    document.addEventListener("touchstart", handleTouch, { passive: false });
+    document.addEventListener("touchstart", handleTouchStart, { passive: false });
     return () => {
       document.removeEventListener("mousedown", handleClick);
-      document.removeEventListener("touchstart", handleTouch);
+      document.removeEventListener("touchstart", handleTouchStart);
     };
   }, [sidebarOpen]);
 
@@ -122,7 +122,7 @@ export default function ShoppingListPage() {
   };
 
   // Handler for saving edited list
-  const handleEditSave = async (updatedList: any) => {
+  const handleEditSave = async (updatedList: Record<string, unknown>) => {
     if (!selectedList?._id) return;
     await fetch("/api/shopping-lists/update", {
       method: "PATCH",
@@ -152,7 +152,7 @@ export default function ShoppingListPage() {
             <div className="text-gray-400 text-sm">No shopping lists yet.</div>
           ) : (
             <ul className="space-y-2 flex-1 overflow-y-auto">
-              {shoppingLists.map((list: any, idx: number) => {
+              {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
                 const isListActive = activeListId === (list._id?.toString?.() || list._id);
                 return (
                   <li
@@ -194,7 +194,7 @@ export default function ShoppingListPage() {
             <div className="text-gray-400 text-sm">No shopping lists yet.</div>
           ) : (
             <ul className="space-y-2 flex-1 overflow-y-auto">
-              {shoppingLists.map((list: any, idx: number) => {
+              {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
                 const isListActive = activeListId === (list._id?.toString?.() || list._id);
                 return (
                   <li
@@ -336,7 +336,7 @@ export default function ShoppingListPage() {
             <>
               {selectedList.items && selectedList.items.length > 0 ? (
                 <ul className="space-y-3">
-                  {selectedList.items.map((item: any, idx: number) => (
+                  {selectedList.items.map((item: Record<string, unknown>, idx: number) => (
                     <li key={item._id || idx} className="flex items-center gap-3">
                       <input
                         type="checkbox"

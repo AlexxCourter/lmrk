@@ -2,18 +2,16 @@
 import { useState } from "react";
 import { FaAppleAlt, FaShoppingCart } from "react-icons/fa";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import RecipeModal from "@/components/RecipeModal";
 import { useRef } from "react";
 
 export default function RecipesPage() {
   const { data: session, update } = useSession();
-  const router = useRouter();
 
   // Use recipes from the user's session data
   const recipes = session?.user?.recipes || [];
 
-  const [selected, setSelected] = useState<any | null>(null);
+  const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
   const [showModal, setShowModal] = useState(false);
 
   // Toast state
@@ -26,9 +24,9 @@ export default function RecipesPage() {
   const toastInterval = useRef<NodeJS.Timeout | null>(null);
 
   // Add ingredients to active shopping list, or create a new one if none
-  const handleAddToShoppingList = async (ingredients: any[]) => {
+  const handleAddToShoppingList = async (ingredients: Record<string, unknown>[]) => {
     let listName = "";
-    let addedCount = ingredients.length;
+    const addedCount = ingredients.length;
 
     if (!session?.user?.activeList) {
       // No active list: create a new one
@@ -39,7 +37,7 @@ export default function RecipesPage() {
           name: "new list",
           color: "#fff",
           dateCreated: new Date().toISOString(),
-          items: ingredients.map((ing: any) => ({
+          items: ingredients.map((ing: Record<string, unknown>) => ({
             name: ing.name,
             quantity: "1",
             checked: false,
@@ -75,7 +73,7 @@ export default function RecipesPage() {
         await update();
         // Find the active list name
         const activeList = session.user.shoppingLists?.find(
-          (list: any) =>
+          (list: Record<string, unknown>) =>
             (list._id?.toString?.() || list._id) ===
             (session?.user?.activeList?.toString?.() || session?.user?.activeList)
         );
@@ -197,9 +195,9 @@ export default function RecipesPage() {
       )}
       <h1 className="text-2xl font-bold mb-8 text-white">My Recipes</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 w-full max-w-5xl">
-        {recipes.map((recipe: any) => (
+        {recipes.map((recipe: Record<string, unknown>) => (
           <div
-            key={recipe.id}
+            key={recipe.id as string}
             className="bg-white rounded-lg shadow p-4 flex flex-col justify-between cursor-pointer relative min-h-[220px] max-h-[220px] transition-transform hover:scale-105"
             style={{ minWidth: 240, maxWidth: 320, cursor: "pointer" }}
             onClick={() => setSelected(recipe)}
@@ -221,7 +219,7 @@ export default function RecipesPage() {
               title="Add ingredients to shopping list"
               onClick={e => {
                 e.stopPropagation();
-                handleAddToShoppingList(recipe.ingredients || []);
+                handleAddToShoppingList(recipe.ingredients as Record<string, unknown>[] || []);
               }}
             >
               <FaShoppingCart />
@@ -250,8 +248,8 @@ export default function RecipesPage() {
             <div className="mb-4">
               <h3 className="font-semibold mb-1">Ingredients:</h3>
               <ul className="list-disc list-inside text-sm text-gray-700">
-                {selected.ingredients?.map((ing: any) => (
-                  <li key={ing.id}>
+                {selected.ingredients?.map((ing: Record<string, unknown>) => (
+                  <li key={ing.id as string}>
                     {ing.name} - {ing.quantity} {ing.unit}
                   </li>
                 ))}

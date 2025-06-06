@@ -10,8 +10,8 @@ export default function ToolsCards({
   recipes,
   shoppingLists,
 }: {
-  recipes: any[];
-  shoppingLists: any[];
+  recipes: Record<string, unknown>[];
+  shoppingLists: Record<string, unknown>[];
 }) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -29,11 +29,11 @@ export default function ToolsCards({
           <div className="flex-1">
             {recipeList.length > 0 ? (
               <ul className="space-y-2">
-                {recipeList.map((recipe: any, idx: number) => {
-                  const Icon = RECIPE_ICONS?.[recipe.icon]?.icon || RECIPE_ICONS[0].icon;
+                {recipeList.map((recipe: Record<string, unknown>, idx: number) => {
+                  const Icon = RECIPE_ICONS?.[recipe.icon as number]?.icon || RECIPE_ICONS[0].icon;
                   return (
                     <li
-                      key={recipe._id || idx}
+                      key={recipe._id as string || idx}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-purple-700 hover:text-white transition cursor-pointer group"
                       style={{ cursor: "pointer" }}
                       onClick={() => router.push("/recipes")}
@@ -42,7 +42,7 @@ export default function ToolsCards({
                         <Icon />
                       </span>
                       <span className="flex-1 font-semibold text-base truncate">
-                        {recipe.name}
+                        {recipe.name as string}
                       </span>
                       <FaChevronRight className="text-lg text-gray-400 group-hover:text-white" />
                     </li>
@@ -79,16 +79,16 @@ export default function ToolsCards({
               <ul className="space-y-2">
                 {shoppingLists
                   .slice() // copy array
-                  .sort((a: any, b: any) => {
+                  .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
                     // Sort by dateCreated descending (most recent first)
-                    const aDate = new Date(a.dateCreated || 0).getTime();
-                    const bDate = new Date(b.dateCreated || 0).getTime();
+                    const aDate = new Date(a.dateCreated as string || 0).getTime();
+                    const bDate = new Date(b.dateCreated as string || 0).getTime();
                     return bDate - aDate;
                   })
                   .slice(0, 3)
-                  .map((list: any, idx: number) => (
+                  .map((list: Record<string, unknown>, idx: number) => (
                     <li
-                      key={list._id || idx}
+                      key={list._id as string || idx}
                       className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer group transition"
                       style={{
                         background: list.color || "#fff",
@@ -97,7 +97,7 @@ export default function ToolsCards({
                       onClick={() => router.push("/shopping-lists")}
                     >
                       <span className="flex-1 font-semibold text-base truncate text-gray-800 group-hover:text-purple-800">
-                        {list.name}
+                        {list.name as string}
                       </span>
                       <FaChevronRight className="text-lg text-gray-400 group-hover:text-purple-700" />
                     </li>

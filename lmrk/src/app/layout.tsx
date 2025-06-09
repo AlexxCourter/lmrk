@@ -20,6 +20,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {/* Font link moved to _document.js */}
+        <link
+          href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap"
+          rel="stylesheet"
+        />
       </head>
       <body className="font-sans min-h-screen flex flex-col">
         <SessionWrapper>

@@ -4,7 +4,7 @@ declare module "next-auth" {
       _id?: string;
       createdAt?: string;
       username?: string;
-      email?: string;
+      email?: string | null | undefined;
       profileImage?: string;
       bio?: string;
       preferences?: {
@@ -17,8 +17,8 @@ declare module "next-auth" {
       passwordHash?: string;
       referral?: string;
       activeList?: string | null;
-      name?: string;
-      image?: string;
+      name?: string | null | undefined;
+      image?: string | null | undefined;
       [key: string]: unknown;
     };
   }
@@ -26,7 +26,7 @@ declare module "next-auth" {
     _id?: string;
     createdAt?: string;
     username?: string;
-    email?: string;
+    email?: string | null | undefined;
     profileImage?: string;
     bio?: string;
     preferences?: {
@@ -39,8 +39,8 @@ declare module "next-auth" {
     passwordHash?: string;
     referral?: string;
     activeList?: string | null;
-    name?: string;
-    image?: string;
+    name?: string | null | undefined;
+    image?: string | null | undefined;
   }
 }
 
@@ -49,7 +49,7 @@ declare module "next-auth/jwt" {
     _id?: string;
     createdAt?: string;
     username?: string;
-    email?: string;
+    email?: string | null | undefined;
     profileImage?: string;
     bio?: string;
     preferences?: {
@@ -62,8 +62,8 @@ declare module "next-auth/jwt" {
     passwordHash?: string;
     referral?: string;
     activeList?: string | null;
-    name?: string;
-    image?: string;
+    name?: string | null | undefined;
+    image?: string | null | undefined;
     [key: string]: unknown;
   }
 }

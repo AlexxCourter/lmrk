@@ -45,6 +45,7 @@ export interface User {
   passwordHash: string;
   referral?: string;
   activeList?: string; // Add this line for the active shopping list id
+  emailVerified?: Date | string | null; // <-- Add this line
 }
 
 export async function getUsersCollection(): Promise<Collection<User>> {

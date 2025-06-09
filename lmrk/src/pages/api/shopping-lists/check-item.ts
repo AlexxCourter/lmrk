@@ -12,8 +12,15 @@ const nextAuthOptions = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "PATCH") return res.status(405).end();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = await getServerSession(req, res, nextAuthOptions as any);
+  interface SessionUser {
+    email?: string;
+    [key: string]: unknown;
+  }
+  interface Session {
+    user?: SessionUser;
+    [key: string]: unknown;
+  }
+  const session = await getServerSession(req, res, nextAuthOptions as any) as Session;
   if (!session?.user?.email) return res.status(401).json({ error: "Unauthorized" });
 
   const { listId, itemId, checked } = req.body;

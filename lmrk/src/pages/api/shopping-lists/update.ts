@@ -12,8 +12,15 @@ const nextAuthOptions = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "PATCH") return res.status(405).end();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = await getServerSession(req, res, nextAuthOptions as any);
+  interface SessionUser {
+    email?: string;
+    [key: string]: unknown;
+  }
+  interface Session {
+    user?: SessionUser;
+    [key: string]: unknown;
+  }
+  const session = await getServerSession(req, res, nextAuthOptions as any) as Session;
   if (!session?.user?.email) return res.status(401).json({ error: "Unauthorized" });
 
   const { listId, name, color, dateCreated, items } = req.body;
@@ -30,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         "shoppingLists.$.color": color,
         "shoppingLists.$.dateCreated": dateCreated,
         "shoppingLists.$.items": items.map((item: Record<string, unknown>) => ({
-          _id: item._id ? new ObjectId(item._id) : new ObjectId(),
+          _id: (typeof item._id === "string" && ObjectId.isValid(item._id)) ? new ObjectId(item._id) : new ObjectId(),
           name: item.name,
           quantity: item.quantity,
           checked: !!item.checked,

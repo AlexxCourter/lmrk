@@ -7,9 +7,21 @@ const nextAuthOptions = {
   session: { strategy: "jwt" },
 };
 
+type SessionUser = {
+  recipes?: unknown[];
+  shoppingLists?: unknown[];
+  [key: string]: unknown;
+};
+
+type Session = {
+  user?: SessionUser;
+  [key: string]: unknown;
+} | null;
+
 export default async function UserSettingsPage() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const session = await getServerSession(nextAuthOptions as any);
+  const session = (await getServerSession(
+    nextAuthOptions as Record<string, unknown>
+  )) as Session;
   if (!session || !session.user) {
     redirect("/");
   }

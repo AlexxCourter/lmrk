@@ -54,6 +54,20 @@ export default function ClientProfile({
     setSelectedIconId(profileImage || "FaUser");
   }, [profileImage]);
 
+  // Sync editUsername, editBio, and selectedIconId with props when they change
+  useEffect(() => {
+    setEditUsername(username);
+  }, [username]);
+
+  useEffect(() => {
+    setEditBio(bio || "");
+    setBioCount(bio.length || 0);
+  }, [bio]);
+
+  useEffect(() => {
+    setSelectedIconId(profileImage || "FaUser");
+  }, [profileImage]);
+
   // Fix: Prevent memory leaks by clearing intervals/timeouts on unmount
   useEffect(() => {
     return () => {

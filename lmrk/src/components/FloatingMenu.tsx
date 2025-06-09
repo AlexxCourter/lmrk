@@ -50,6 +50,15 @@ export default function FloatingMenu() {
 
   return (
     <>
+      {/* Dimmed overlay when create menu is open */}
+      {showCreate && (
+        <div
+          className="fixed inset-0 z-40 bg-black transition-opacity"
+          style={{ background: "rgba(0,0,0,0.30)" }} // much lighter dim
+          onClick={() => setShowCreate(false)}
+          aria-hidden="true"
+        />
+      )}
       <div
         ref={menuRef}
         className="fixed bottom-15 left-1/2 -translate-x-1/2 z-50 bg-white border-3 border-purple-700 rounded-xl shadow-md shadow-gray-700 flex items-center justify-between px-2"
@@ -84,30 +93,65 @@ export default function FloatingMenu() {
             <FaPlus />
           </button>
           {showCreate && (
-            <>
-              <button
-                className="absolute -top-14 -left-10 bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
-                style={{ width: 44, height: 44, fontSize: 20 }}
-                aria-label="Create Recipe"
-                onClick={() => {
-                  setShowCreate(false);
-                  setShowRecipeModal(true);
-                }}
-              >
-                <FaAppleAlt />
-              </button>
-              <button
-                className="absolute -top-14 -right-10 bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
-                style={{ width: 44, height: 44, fontSize: 20 }}
-                aria-label="Create Shopping List"
-                onClick={() => {
-                  setShowCreate(false);
-                  setShowShoppingModal(true);
-                }}
-              >
-                <FaListUl />
-              </button>
-            </>
+            <div
+              className="absolute z-50 flex flex-col items-start"
+              style={{
+                left: "50%",
+                transform: "translateX(-50%)",
+                bottom: 50, // slightly closer to the floating menu
+                gap: 8,     // tighter spacing between buttons
+              }}
+            >
+              {/* New Recipe Button with label */}
+              <div className="flex items-center animate-float-pop">
+                <button
+                  className="bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
+                  style={{ width: 48, height: 48, fontSize: 22 }}
+                  aria-label="Create Recipe"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setShowRecipeModal(true);
+                  }}
+                >
+                  <FaAppleAlt />
+                </button>
+                <span className="ml-3 text-xs font-semibold text-purple-700 bg-white bg-opacity-90 px-2 py-0.5 rounded shadow whitespace-nowrap">
+                  New Recipe
+                </span>
+              </div>
+              {/* New List Button with label */}
+              <div className="flex items-center animate-float-pop" style={{ marginTop: 2 }}>
+                <button
+                  className="bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
+                  style={{ width: 48, height: 48, fontSize: 22 }}
+                  aria-label="Create Shopping List"
+                  onClick={() => {
+                    setShowCreate(false);
+                    setShowShoppingModal(true);
+                  }}
+                >
+                  <FaListUl />
+                </button>
+                <span className="ml-3 text-xs font-semibold text-purple-700 bg-white bg-opacity-90 px-2 py-0.5 rounded shadow whitespace-nowrap">
+                  New List
+                </span>
+              </div>
+              <style jsx global>{`
+                @keyframes floatPop {
+                  0% {
+                    opacity: 0;
+                    transform: translateY(20px) scale(0.7);
+                  }
+                  100% {
+                    opacity: 1;
+                    transform: translateY(0) scale(1);
+                  }
+                }
+                .animate-float-pop {
+                  animation: floatPop 0.25s cubic-bezier(.4,1.7,.6,.95);
+                }
+              `}</style>
+            </div>
           )}
         </div>
         <div className="relative">

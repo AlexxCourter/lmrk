@@ -15,10 +15,9 @@ function sanitize(input: string) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(
-    { req },
+  const session = (await getServerSession(
     nextAuthOptions as Record<string, unknown>
-  ) as { user?: { email?: string } } | null;
+  )) as { user?: { email?: string } } | null;
   if (!session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

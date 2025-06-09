@@ -1,12 +1,6 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
+"use client";
+import { useSession } from "next-auth/react";
 import ToolsCards from "./ToolsCards";
-
-// Inline minimal NextAuth config for getServerSession
-const nextAuthOptions = {
-  providers: [],
-  session: { strategy: "jwt" },
-};
 
 function toPlainObject(obj: unknown): unknown {
   if (Array.isArray(obj)) {
@@ -29,27 +23,35 @@ function toPlainObject(obj: unknown): unknown {
   return obj;
 }
 
-type SessionUser = {
-  recipes?: unknown[];
-  shoppingLists?: unknown[];
-  [key: string]: unknown;
-};
+export default function ToolsPage() {
+  const { data: session, status } = useSession();
 
-type Session = {
-  user?: SessionUser;
-  [key: string]: unknown;
-};
+  type UserWithRecipes = {
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
+    recipes?: unknown[];
+    shoppingLists?: unknown[];
+  };
 
-export default async function ToolsPage() {
-  const session = (await getServerSession(
-    nextAuthOptions as Record<string, unknown>
-  )) as Session;
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
   if (!session || !session.user) {
-    redirect("/");
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+    return null;
   }
 
-  const recipes = toPlainObject(session.user?.recipes || []) as Record<string, unknown>[];
-  const shoppingLists = toPlainObject(session.user?.shoppingLists || []) as Record<string, unknown>[];
+  const user = session.user as UserWithRecipes;
+
+  const recipes = Array.isArray(user.recipes)
+    ? (toPlainObject(user.recipes) as Record<string, unknown>[])
+    : [];
+  const shoppingLists = Array.isArray(user.shoppingLists)
+    ? (toPlainObject(user.shoppingLists) as Record<string, unknown>[])
+    : [];
 
   return (
     <div

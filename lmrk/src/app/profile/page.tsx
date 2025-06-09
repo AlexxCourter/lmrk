@@ -1,12 +1,6 @@
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth/next";
+"use client";
+import { useSession } from "next-auth/react";
 import ClientProfile from "./ClientProfile";
-
-// Inline minimal NextAuth config for getServerSession
-const nextAuthOptions = {
-  providers: [],
-  session: { strategy: "jwt" },
-};
 
 type User = {
   email?: string | null;
@@ -19,43 +13,40 @@ type User = {
   activeList?: string | null;
 };
 
-type Session = {
-  user?: User;
-  [key: string]: unknown;
-} | null;
+export default function ProfilePage() {
+  const { data: session, status } = useSession();
 
-export default async function ProfilePage() {
-  const session = (await getServerSession(
-    nextAuthOptions as Record<string, unknown>
-  )) as Session;
+  if (status === "loading") {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
   if (!session || !session.user) {
-    redirect("/");
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+    return null;
   }
 
   const user = session.user as User;
-  if (!user) {
-    return (
-      <div className="max-w-2xl mx-auto py-10 px-4 mt-8 sm:mt-16">
-        <h1 className="text-2xl font-bold mb-4">Profile</h1>
-        <p className="text-red-600">User not found.</p>
-      </div>
-    );
-  }
-
-  const profileImage = user.profileImage || user.image || "";
-  const username = user.username || "No username set";
-  const bio = user.bio || "";
-  const recipes = user.recipes || [];
-  const shoppingLists = user.shoppingLists || [];
+  const profileImage =
+    (typeof user.profileImage === "string" && user.profileImage) ||
+    (typeof user.image === "string" && user.image) ||
+    "";
+  const username =
+    (typeof user.username === "string" && user.username) || "No username set";
+  const bio = typeof user.bio === "string" ? user.bio : "";
+  const recipes = Array.isArray(user.recipes) ? user.recipes : [];
+  const shoppingLists = Array.isArray(user.shoppingLists)
+    ? user.shoppingLists
+    : [];
 
   return (
     <ClientProfile
-      profileImage={profileImage ?? ""}
-      username={username ?? ""}
+      profileImage={profileImage}
+      username={username}
       email={user.email ?? ""}
-      bio={bio ?? ""}
+      bio={bio}
       recipesCount={recipes.length}
       shoppingListsCount={shoppingLists.length}
-    ></ClientProfile>
+    />
   );
 }

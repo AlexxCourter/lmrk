@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { getUsersCollection } from "@/models/User";
 import { ObjectId } from "mongodb";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Inline minimal NextAuth config for getServerSession
 const nextAuthOptions = {
   providers: [],
@@ -52,3 +53,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "Failed to update shopping list" });
   }
 }
+
+

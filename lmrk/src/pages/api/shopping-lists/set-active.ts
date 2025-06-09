@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth/next";
 import { getUsersCollection } from "@/models/User";
 import type { Session } from "next-auth";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Inline minimal NextAuth config for getServerSession
 const nextAuthOptions = {
   providers: [],
@@ -11,8 +13,6 @@ const nextAuthOptions = {
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "PATCH") return res.status(405).end();
-
-
 
   const session = await getServerSession(req, res, nextAuthOptions as any) as Session | null;
   if (!session?.user?.email) return res.status(401).json({ error: "Unauthorized" });

@@ -4,7 +4,6 @@ import type { AuthOptions } from "next-auth/core/types";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getUsersCollection } from "@/models/User";
-import type { User as AppUser } from "@/models/User";
 import bcrypt from "bcryptjs";
 import type { User, Session } from "next-auth";
 import type { Account } from "next-auth/core/types";
@@ -34,7 +33,7 @@ const nextAuthOptions: AuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials, req) {
+      async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
         const users = await getUsersCollection();
         const user = await users.findOne({ email: credentials.email });

@@ -4,6 +4,8 @@ import { getUsersCollection } from "@/models/User";
 import { ObjectId } from "mongodb";
 import type { Session } from "next-auth";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // Inline minimal NextAuth config for getServerSession
 const nextAuthOptions = {
   providers: [],

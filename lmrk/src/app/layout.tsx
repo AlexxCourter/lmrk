@@ -19,11 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Font link moved to _document.js */}
-        <link
-          href="https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap"
-          rel="stylesheet"
-        />
+        {/* Remove custom font link from here to avoid Next.js warning */}
       </head>
       <body className="font-sans min-h-screen flex flex-col">
         <SessionWrapper>

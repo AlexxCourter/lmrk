@@ -26,21 +26,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh]">
+    <div
+      className="flex flex-col items-center justify-center min-h-[80vh] w-full"
+      style={{
+        background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)",
+        minHeight: "100vh",
+        width: "100vw",
+      }}
+    >
       <form
         onSubmit={handleSubmit}
         className="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm flex flex-col gap-4 border border-purple-200"
       >
         <h2
           className="text-2xl font-bold text-center mb-2"
-          style={{ fontFamily: "'Bree Serif', serif" }}
+          style={{ fontFamily: "'Bree Serif', serif", color: "#000" }}
         >
           Sign In
         </h2>
         <input
           type="email"
           placeholder="Email"
-          className="border rounded px-3 py-2"
+          className="border rounded px-3 py-2 text-black"
           value={email}
           onChange={e => setEmail(e.target.value)}
           required
@@ -48,7 +55,7 @@ export default function LoginPage() {
         <input
           type="password"
           placeholder="Password"
-          className="border rounded px-3 py-2"
+          className="border rounded px-3 py-2 text-black"
           value={password}
           onChange={e => setPassword(e.target.value)}
           required
@@ -64,6 +71,7 @@ export default function LoginPage() {
           <Link
             href="/sign-up"
             className="text-purple-700 hover:underline font-medium"
+            style={{ color: "#6d28d9" }}
           >
             Sign up
           </Link>
@@ -72,6 +80,7 @@ export default function LoginPage() {
       <button
         className="mt-6 bg-white border border-purple-700 text-purple-700 rounded py-3 px-6 text-lg font-semibold shadow hover:bg-purple-50"
         onClick={() => signIn("google", { callbackUrl: "/" })}
+        style={{ color: "#6d28d9" }}
       >
         Sign in with Google
       </button>

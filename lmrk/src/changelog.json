@@ -1,0 +1,39 @@
+{
+    "app": "lmrk",
+    "release": "Alpha",
+    "version": "0.1.1",
+    "changes": [
+        {
+            "version": "0.1.1",
+            "date": "2025-06-23",
+            "changes": [
+                {
+                    "type": "fixed",
+                    "description": "Resolved issue with user authentication flow."
+                },
+                {
+                    "type": "fixed",
+                    "description": "Fixed recipe display of ingredient measurements."
+                },
+                {
+                    "type": "improved",
+                    "description": "Enhanced UI responsiveness on mobile devices."
+                },
+                {
+                    "type": "added",
+                    "description": "Added filters, colors, meal type, and tags for recipes."
+                }
+            ]
+        },
+        {
+            "version": "0.1.0",
+            "date": "2025-06-06",
+            "changes": [
+                {
+                    "type": "added",
+                    "description": "Initial release of the lmrk application."
+                }
+            ]
+        }
+    ]
+}

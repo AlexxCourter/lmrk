@@ -1,7 +1,14 @@
+"use client";
 import { FaListUl, FaUtensils, FaShoppingCart, FaUserPlus, FaCheckCircle } from "react-icons/fa";
 import Link from "next/link";
+import changelog from "../changelog.json";
+import { useSession } from "next-auth/react";
 
 export default function HomePage() {
+  const { data: session } = useSession();
+  const currentVersion = changelog.version || "Alpha 1.0";
+  const release = changelog.release;
+
   return (
     <section className="flex flex-col items-center min-h-screen w-full bg-gradient-to-br from-purple-800 to-purple-300 px-4 py-8">
       {/* App Title and Tagline */}
@@ -13,7 +20,9 @@ export default function HomePage() {
           Simplify shopping and meal planning by seamlessly integrating your recipes and shopping lists.
         </p>
         <div className="mt-2 text-xs text-purple-200 font-semibold tracking-widest uppercase">
-          Alpha 1.0
+          <Link href="/changelog" className="hover:underline">
+            {release} {currentVersion}
+          </Link>
         </div>
       </div>
 
@@ -57,19 +66,21 @@ export default function HomePage() {
       {/* Development Status */}
       <div className="flex items-center gap-2 mb-8">
         <FaCheckCircle className="text-green-500" />
-        <span className="text-sm text-white font-medium">
-          Currently in <span className="font-bold">Alpha 1.0</span> — Features and design are evolving!
-        </span>
+        <Link href="/changelog" className="text-sm text-white font-medium hover:underline">
+          Currently in <span className="font-bold">{release} {currentVersion}</span> — Features and design are evolving!
+        </Link>
       </div>
 
       {/* Call to Action */}
-      <Link
-        href="/log-in"
-        className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white font-bold px-8 py-3 rounded-full text-lg shadow-lg transition"
-      >
-        <FaUserPlus className="text-xl" />
-        Create Your Free Account
-      </Link>
+      {!session?.user && (
+        <Link
+          href="/log-in"
+          className="flex items-center gap-2 bg-purple-700 hover:bg-purple-800 text-white font-bold px-8 py-3 rounded-full text-lg shadow-lg transition"
+        >
+          <FaUserPlus className="text-xl" />
+          Create Your Free Account
+        </Link>
+      )}
     </section>
   );
 }

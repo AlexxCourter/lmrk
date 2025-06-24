@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const session = await getServerSession(req, res, nextAuthOptions as any) as Session | null;
   if (!session?.user?.email) return res.status(401).json({ error: "Unauthorized" });
 
-  const { name, icon, description, ingredients, instructions } = req.body;
+  const { name, icon, description, ingredients, instructions, mealType, tags, color } = req.body;
   if (!name || !ingredients || !instructions) {
     return res.status(400).json({ error: "Missing fields" });
   }
@@ -31,6 +31,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     description,
     ingredients,
     instructions,
+    mealType: mealType || undefined,
+    tags: Array.isArray(tags) ? tags : [],
+    color: color || undefined,
   };
 
   const result = await users.updateOne(

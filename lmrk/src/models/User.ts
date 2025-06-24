@@ -59,8 +59,11 @@ export type Recipe = {
   name: string;
   icon: number; // index of icon
   description: string;
-  ingredients: { name: string; amount: string; measure: string }[];
+  ingredients: { name: string; quantity: string; unit: string }[];
   instructions: string[];
+  mealType?: "Breakfast" | "Lunch" | "Dinner" | "Dessert" | "Snack";
+  tags?: string[];
+  color?: string;
 };
 
 export type ShoppingListItem = {

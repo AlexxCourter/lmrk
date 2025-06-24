@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
@@ -23,17 +23,97 @@ const MEASURES = [
   "g", "kg", "ml", "l", "tsp", "tbsp", "cup", "oz", "lb", "pcs"
 ];
 
-export default function RecipeModal({ open, onClose }: { open: boolean, onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [iconIdx, setIconIdx] = useState(0);
+const MEAL_TYPES = ["Breakfast", "Lunch", "Dinner", "Dessert", "Snack"];
+const COLOR_OPTIONS = [
+  "#f87171", // red
+  "#fbbf24", // yellow
+  "#34d399", // green
+  "#60a5fa", // blue
+  "#a78bfa", // purple
+  "#f472b6", // pink
+  "#f3f4f6", // gray
+  "#fff",    // white
+];
+
+type RecipeModalInitialData = {
+  name: string;
+  iconIdx: number;
+  description: string;
+  ingredients: { name: string; quantity: string; unit: string }[];
+  instructions: string[];
+  mealType: string;
+  tags: string;
+  color: string;
+  id?: string;
+};
+
+export default function RecipeModal({
+  open,
+  onClose,
+  initialData,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initialData?: RecipeModalInitialData;
+}) {
+  // Use initialData if provided, otherwise default values
+  const [name, setName] = useState(initialData?.name || "");
+  const [iconIdx, setIconIdx] = useState(initialData?.iconIdx ?? 0);
   const [showIconPicker, setShowIconPicker] = useState(false);
-  const [description, setDescription] = useState("");
-  const [ingredients, setIngredients] = useState([
-    { name: "", amount: "", measure: MEASURES[0] }
-  ]);
-  const [instructions, setInstructions] = useState([""]);
+  const [description, setDescription] = useState(initialData?.description || "");
+  const [ingredients, setIngredients] = useState(
+    initialData?.ingredients?.length
+      ? initialData.ingredients
+      : [{ name: "", quantity: "", unit: MEASURES[0] }]
+  );
+  const [instructions, setInstructions] = useState(
+    initialData?.instructions?.length ? initialData.instructions : [""]
+  );
+  const [mealType, setMealType] = useState(initialData?.mealType || "");
+  const [tags, setTags] = useState(initialData?.tags || "");
+  const [color, setColor] = useState(initialData?.color || "#fff");
   const router = useRouter();
   const { update } = useSession();
+
+  // When initialData changes (e.g. opening for edit), update state
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name || "");
+      setIconIdx(initialData.iconIdx ?? 0);
+      setDescription(initialData.description || "");
+      // --- FIX: Normalize ingredient fields for edit ---
+      setIngredients(
+        initialData.ingredients?.length
+          ? initialData.ingredients.map(ing => ({
+              name: ing.name || "",
+              quantity:
+                typeof ing.quantity === "string"
+                  ? ing.quantity
+                  : typeof ing.quantity === "number"
+                  ? String(ing.quantity)
+                  : typeof (ing as any).amount === "string"
+                  ? (ing as any).amount
+                  : typeof (ing as any).amount === "number"
+                  ? String((ing as any).amount)
+                  : "",
+              unit:
+                typeof ing.unit === "string"
+                  ? ing.unit
+                  : typeof (ing as any).measure === "string"
+                  ? (ing as any).measure
+                  : MEASURES[0],
+            }))
+          : [{ name: "", quantity: "", unit: MEASURES[0] }]
+      );
+      // --- END FIX ---
+      setInstructions(
+        initialData.instructions?.length ? initialData.instructions : [""]
+      );
+      setMealType(initialData.mealType || "");
+      setTags(initialData.tags || "");
+      setColor(initialData.color || "#fff");
+    }
+  }, [initialData, open]);
 
   if (!open) return null;
 
@@ -42,7 +122,7 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
   };
 
   const handleAddIngredient = () => {
-    setIngredients(ings => [...ings, { name: "", amount: "", measure: MEASURES[0] }]);
+    setIngredients(ings => [...ings, { name: "", quantity: "", unit: MEASURES[0] }]);
   };
 
   const handleRemoveIngredient = (idx: number) => {
@@ -64,23 +144,47 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
   // Placeholder for submit logic
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // API call to save recipe
-    const res = await fetch("/api/recipes/add", {
-      method: "POST",
+    // Close modal immediately so user doesn't see blank data
+    onClose();
+    // If editing (initialData has id), use update route, else use add route
+    const isEdit = !!initialData?.id;
+    const url = isEdit ? "/api/recipes/update" : "/api/recipes/add";
+    const method = isEdit ? "PATCH" : "POST";
+    const body = isEdit
+      ? {
+          id: initialData.id,
+          name,
+          icon: iconIdx,
+          description,
+          ingredients,
+          instructions,
+          mealType: mealType || undefined,
+          tags: tags.split(/[ ,]+/).filter(Boolean),
+          color,
+        }
+      : {
+          name,
+          icon: iconIdx,
+          description,
+          ingredients,
+          instructions,
+          mealType: mealType || undefined,
+          tags: tags.split(/[ ,]+/).filter(Boolean),
+          color,
+        };
+
+    const res = await fetch(url, {
+      method,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        icon: iconIdx,
-        description,
-        ingredients,
-        instructions,
-      }),
+      body: JSON.stringify(body),
     });
     if (res.ok) {
       // Refresh session to get updated user data
       await update();
-      onClose();
-      router.push("/recipes");
+      // Only push if not already on /recipes
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/recipes")) {
+        router.push("/recipes");
+      }
     } else {
       // Optionally handle error
       alert("Failed to save recipe.");
@@ -90,7 +194,13 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
   const Icon = ICONS[iconIdx].icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30">
+    <div className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{
+        background: "rgba(0,0,0,0.35)",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       <div className="bg-white rounded-xl shadow-2xl p-8 max-w-lg w-full relative">
         <button
           className="absolute top-2 right-2 text-gray-500 hover:text-purple-700 text-3xl"
@@ -159,15 +269,15 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
                     />
                     <input
                       className="w-16 border rounded p-1 text-sm"
-                      placeholder="Amount"
-                      value={ing.amount}
-                      onChange={e => handleIngredientChange(idx, "amount", e.target.value)}
+                      placeholder="Quantity"
+                      value={ing.quantity}
+                      onChange={e => handleIngredientChange(idx, "quantity", e.target.value)}
                       required
                     />
                     <select
                       className="border rounded p-1 text-sm"
-                      value={ing.measure}
-                      onChange={e => handleIngredientChange(idx, "measure", e.target.value)}
+                      value={ing.unit}
+                      onChange={e => handleIngredientChange(idx, "unit", e.target.value)}
                     >
                       {MEASURES.map(m => (
                         <option key={m} value={m}>{m}</option>
@@ -224,6 +334,49 @@ export default function RecipeModal({ open, onClose }: { open: boolean, onClose:
               >
                 Add another step
               </button>
+            </div>
+            {/* Meal Type */}
+            <div className="mb-4">
+              <label className="block font-semibold mb-1">Meal Type</label>
+              <select
+                className="w-full border rounded px-3 py-2 text-black"
+                value={mealType}
+                onChange={e => setMealType(e.target.value)}
+              >
+                <option value="">Select meal type</option>
+                {MEAL_TYPES.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            {/* Tags */}
+            <div className="mb-4">
+              <label className="block font-semibold mb-1">Tags</label>
+              <input
+                className="w-full border rounded px-3 py-2 text-black"
+                placeholder="Enter tags separated by commas or spaces"
+                value={tags}
+                onChange={e => setTags(e.target.value)}
+              />
+              <div className="mt-1 text-xs text-gray-500">
+                Example: quick, vegan, spicy
+              </div>
+            </div>
+            {/* Color */}
+            <div className="mb-4">
+              <label className="block font-semibold mb-1">Color</label>
+              <div className="flex gap-2 flex-wrap">
+                {COLOR_OPTIONS.map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`w-7 h-7 rounded-full border-2 ${color === opt ? "border-purple-700" : "border-gray-300"}`}
+                    style={{ background: opt }}
+                    onClick={() => setColor(opt)}
+                    aria-label={opt}
+                  />
+                ))}
+              </div>
             </div>
           </div>
           {/* SCROLLABLE CONTENT END */}

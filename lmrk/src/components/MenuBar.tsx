@@ -141,6 +141,15 @@ export default function MenuBar() {
                   >
                     Recipe Ideas
                   </button>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      router.push("/changelog");
+                    }}
+                  >
+                    Recent Updates
+                  </button>
                 </div>
               </div>
             )}

@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
       language: "en-US",
     },
     shoppingLists: [],
-    recipes: [],
+    recipes: [], // Will store recipes with mealType, tags, color, etc.
     referral: safeReferral,
   };
 

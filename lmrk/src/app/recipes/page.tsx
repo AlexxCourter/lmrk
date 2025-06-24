@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FaAppleAlt, FaShoppingCart, FaThLarge, FaList, FaFilter, FaTimes, FaPencilAlt } from "react-icons/fa";
+import { FaShoppingCart, FaThLarge, FaList, FaFilter, FaTimes, FaPencilAlt } from "react-icons/fa";
 import { useSession } from "next-auth/react";
 import RecipeModal from "@/components/RecipeModal";
 import { useRef } from "react";
@@ -104,6 +104,7 @@ export default function RecipesPage() {
       iconIdx: typeof recipe.icon === "number" ? recipe.icon : 0,
       description: recipe.description || "",
       ingredients: Array.isArray(recipe.ingredients)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ? recipe.ingredients.map((ing: any) => ({
             name: ing.name || "",
             // Safely cast legacy keys to new keys for quantity and unit
@@ -618,6 +619,7 @@ export default function RecipesPage() {
                     <div className="mb-4">
                       <h3 className="font-semibold mb-1 text-black">Ingredients:</h3>
                       <ul className="list-disc list-inside text-sm text-black">
+                        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                         {(Array.isArray(selected.ingredients) ? selected.ingredients : []).map((ing: any, idx: number) => (
                           <li key={ing.id || idx}>
                             {String(ing.name)} - {String(ing.quantity ?? ing.amount ?? "")} {String(ing.unit ?? ing.measure ?? "")}
@@ -773,6 +775,7 @@ export default function RecipesPage() {
                   <div className="mb-4">
                     <h3 className="font-semibold mb-1 text-black">Ingredients:</h3>
                     <ul className="list-disc list-inside text-sm text-black">
+                      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any*/}
                       {(Array.isArray(selectedRecipe.ingredients) ? selectedRecipe.ingredients : []).map((ing: any, idx: number) => (
                         <li key={ing.id || idx}>
                           {String(ing.name)} - {String(ing.quantity ?? ing.amount ?? "")} {String(ing.unit ?? ing.measure ?? "")}

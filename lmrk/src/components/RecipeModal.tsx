@@ -91,15 +91,21 @@ export default function RecipeModal({
                   ? ing.quantity
                   : typeof ing.quantity === "number"
                   ? String(ing.quantity)
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   : typeof (ing as any).amount === "string"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   ? (ing as any).amount
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   : typeof (ing as any).amount === "number"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   ? String((ing as any).amount)
                   : "",
               unit:
                 typeof ing.unit === "string"
                   ? ing.unit
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   : typeof (ing as any).measure === "string"
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   ? (ing as any).measure
                   : MEASURES[0],
             }))

@@ -51,6 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const user = await users.findOne({ email: session.user.email });
     const updatedRecipe =
       user?.recipes?.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (r: any) =>
           (r._id?.toString?.() || r._id) === id ||
           (r.id?.toString?.() || r.id) === id

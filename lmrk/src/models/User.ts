@@ -46,6 +46,10 @@ export interface User {
   referral?: string;
   activeList?: string; // Add this line for the active shopping list id
   emailVerified?: Date | string | null; // <-- Add this line
+  // Password reset fields
+  passwordResetToken?: string;
+  passwordResetExpires?: number;
+  passwordResetUsed?: boolean;
 }
 
 export async function getUsersCollection(): Promise<Collection<User>> {

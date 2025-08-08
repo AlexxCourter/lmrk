@@ -1,5 +1,5 @@
 "use client";
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 function ResetPasswordForm() {
@@ -8,6 +8,7 @@ function ResetPasswordForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(5);
   const searchParams = useSearchParams();
   const token = searchParams?.get("token") || "";
 
@@ -31,6 +32,16 @@ function ResetPasswordForm() {
       setError("Invalid or expired reset link.");
     }
   }
+
+  useEffect(() => {
+    if (success && redirectCountdown > 0) {
+      const timer = setTimeout(() => setRedirectCountdown(redirectCountdown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+    if (success && redirectCountdown === 0) {
+      window.location.href = "/log-in";
+    }
+  }, [success, redirectCountdown]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] w-full">
@@ -58,7 +69,8 @@ function ResetPasswordForm() {
         {error && <div className="text-red-500 text-sm">{error}</div>}
         {success && (
           <div className="text-green-600 text-sm">
-            Your password has been reset. You can now log in.
+            Your password has been reset. You can now log in.<br />
+            Redirecting in {redirectCountdown} seconds...
           </div>
         )}
         <button

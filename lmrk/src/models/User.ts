@@ -50,6 +50,10 @@ export interface User {
   passwordResetToken?: string;
   passwordResetExpires?: number;
   passwordResetUsed?: boolean;
+  // Google auth sub id
+  a_id?: string;
+  // Web push subscription
+  pushSubscription?: unknown;
 }
 
 export async function getUsersCollection(): Promise<Collection<User>> {

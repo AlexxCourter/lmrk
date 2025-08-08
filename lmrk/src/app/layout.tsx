@@ -1,7 +1,8 @@
 import "./globals.css";
 import MenuBar from "../components/MenuBar";
-import FloatingMenu from "../components/FloatingMenu";
+import FloatingMenuWrapper from "../app/FloatingMenuWrapper";
 import SessionWrapper from "../components/SessionWrapper";
+
 
 export const metadata = {
   title: "LMRK",
@@ -16,6 +17,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  // Hide FloatingMenu on meal planner page
+  // const hideFloatingMenu = pathname.startsWith("/meal-planner");
   return (
     <html lang="en">
       <head>
@@ -29,9 +33,7 @@ export default function RootLayout({
           <MenuBar />
           <main className="flex-1">{children}</main>
           {/* FloatingMenu positioned above the footer with whitespace */}
-          <div className="relative z-10 flex justify-center">
-            <FloatingMenu />
-          </div>
+          <FloatingMenuWrapper />
           <footer
             className="w-full text-center py-4 text-xs bg-purple-700 text-white border-t-0"
             style={{ fontFamily: "'Bree Serif', serif" }}

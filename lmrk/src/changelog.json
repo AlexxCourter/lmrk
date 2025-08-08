@@ -1,8 +1,30 @@
 {
     "app": "lmrk",
     "release": "Alpha",
-    "version": "0.1.1",
+    "version": "0.1.3",
     "changes": [
+        {
+            "version": "0.1.3",
+            "date": "2025-08-08",
+            "changes": [
+                {
+                    "type": "added",
+                    "description": "Meal Planner UI implemented. Beta test test premium feature for free."
+                },
+                {
+                    "type": "improved",
+                    "description": "user account recovery and password reset mechanics."
+                },
+                {
+                    "type": "added",
+                    "description": "Added recipe sharing. Share your recipes with the community!"
+                },
+                {
+                    "type": "added",
+                    "description": "Users can now subscribe to app notifications."
+                }
+            ]
+        },
         {
             "version": "0.1.2",
             "date": "2025-06-26",

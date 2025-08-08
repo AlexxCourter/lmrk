@@ -61,7 +61,7 @@ export default function ToolsPage() {
       }}
     >
       <div className="max-w-4xl mx-auto py-10 px-4 flex flex-col gap-8">
-        <ToolsCards recipes={recipes} shoppingLists={shoppingLists} />
+        <ToolsCards recipes={recipes} shoppingLists={shoppingLists} user={user} />
         {/* Spacer for floating menu */}
         <div style={{ height: 68 }} />
       </div>

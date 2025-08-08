@@ -150,6 +150,15 @@ export default function MenuBar() {
                   >
                     Recent Updates
                   </button>
+                  <button
+                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    onClick={() => {
+                      setOpenMenu(null);
+                      router.push("/meal-planner");
+                    }}
+                  >
+                    Meal Planner
+                  </button>
                 </div>
               </div>
             )}

@@ -71,8 +71,15 @@ const nextAuthOptions: AuthOptions = {
       const { user, account } = params;
       if (account?.provider === "google") {
         const users = await getUsersCollection();
-        if (!user.email || typeof user.email !== "string") throw new Error("Google account did not return an email.");
-        const existing = await users.findOne({ email: user.email });
+        // Try to find by a_id (Google sub)
+        let existing = null;
+        if (account.providerAccountId) {
+          existing = await users.findOne({ a_id: account.providerAccountId });
+        }
+        // Fallback to email if not found
+        if (!existing && user.email && typeof user.email === "string") {
+          existing = await users.findOne({ email: user.email });
+        }
         if (!existing) {
           await users.insertOne({
             email: user.email,
@@ -85,12 +92,19 @@ const nextAuthOptions: AuthOptions = {
             createdAt: new Date().toISOString(),
             preferences: {
               theme: "light",
-              notifications: true,
+              notifications: false,
               language: "en",
             },
             passwordHash: "",
             referral: "",
+            a_id: account.providerAccountId || "",
           });
+        } else if (!existing.a_id && account.providerAccountId) {
+          // If user exists but doesn't have a_id, update it
+          await users.updateOne(
+            { _id: existing._id },
+            { $set: { a_id: account.providerAccountId } }
+          );
         }
       }
       return true;
@@ -154,11 +168,17 @@ const nextAuthOptions: AuthOptions = {
         token.email = typeof user.email === "string" ? user.email : "";
         token.name = typeof user.name === "string" ? user.name : "";
         token.image = typeof user.image === "string" ? user.image : "";
-      } else if (token.email) {
+      } else if (token.email || token.a_id) {
         // On subsequent requests, fetch latest user data from DB
         try {
           const users = await getUsersCollection();
-          const dbUser = await users.findOne({ email: token.email });
+          let dbUser = null;
+          if (token.a_id) {
+            dbUser = await users.findOne({ a_id: token.a_id });
+          }
+          if (!dbUser && token.email) {
+            dbUser = await users.findOne({ email: token.email });
+          }
           if (dbUser) {
             token._id = dbUser._id?.toString() ?? "";
             token.createdAt = dbUser.createdAt ?? "";
@@ -173,6 +193,7 @@ const nextAuthOptions: AuthOptions = {
             token.activeList = typeof dbUser.activeList === "string" ? dbUser.activeList : undefined;
             token.name = dbUser.username ?? "";
             token.image = dbUser.profileImage ?? "";
+            token.a_id = dbUser.a_id ?? "";
           }
         } catch {
           // ignore DB errors, fallback to existing token

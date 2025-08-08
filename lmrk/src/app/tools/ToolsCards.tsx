@@ -9,9 +9,11 @@ import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal"; // Reuse icon 
 export default function ToolsCards({
   recipes,
   shoppingLists,
+  user,
 }: {
   recipes: Record<string, unknown>[];
   shoppingLists: Record<string, unknown>[];
+  user?: Record<string, unknown>;
 }) {
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
@@ -76,33 +78,71 @@ export default function ToolsCards({
           <h2 className="text-xl font-bold mb-4">Shopping</h2>
           <div className="flex-1">
             {shoppingLists && shoppingLists.length > 0 ? (
-              <ul className="space-y-2">
-                {shoppingLists
-                  .slice() // copy array
-                  .sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
-                    // Sort by dateCreated descending (most recent first)
+              <>
+                {/* Active Shopping List Section */}
+                {(() => {
+                  // Find the active list by matching user.activeList to shopping list _id
+                  const activeListId = user?.activeList;
+                  const activeList = activeListId
+                    ? shoppingLists.find((l: Record<string, unknown>) => l._id?.toString() === activeListId?.toString())
+                    : undefined;
+                  // Sort all lists by dateCreated descending
+                  const sortedLists = shoppingLists.slice().sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
                     const aDate = new Date(a.dateCreated as string || 0).getTime();
                     const bDate = new Date(b.dateCreated as string || 0).getTime();
                     return bDate - aDate;
-                  })
-                  .slice(0, 3)
-                  .map((list: Record<string, unknown>, idx: number) => (
-                    <li
-                      key={list._id as string || idx}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer group transition"
-                      style={{
-                        background: typeof list.color === "string" ? list.color : "#fff",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => router.push("/shopping-lists")}
-                    >
-                      <span className="flex-1 font-semibold text-base truncate text-gray-800 group-hover:text-purple-800">
-                        {list.name as string}
-                      </span>
-                      <FaChevronRight className="text-lg text-gray-400 group-hover:text-purple-700" />
-                    </li>
-                  ))}
-              </ul>
+                  });
+                  // Exclude the active list from recent lists (by _id)
+                  const recentLists = sortedLists.filter((list: Record<string, unknown>) => !activeList || list._id !== activeList._id).slice(0, 3);
+                  return (
+                    <>
+                      {activeList && (
+                        <div className="mb-4">
+                          <div className="text-xs font-semibold text-gray-500 mb-1">currently active shopping list</div>
+                          <ul>
+                            <li
+                              key={activeList._id as string}
+                              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-purple-300 bg-purple-50 cursor-pointer group transition"
+                              style={{
+                                background: typeof activeList.color === "string" ? activeList.color : "#f3e8ff",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => router.push("/shopping-lists")}
+                            >
+                              <span className="flex-1 font-semibold text-base truncate text-purple-900 group-hover:text-purple-800">
+                                {activeList.name as string}
+                              </span>
+                              <FaChevronRight className="text-lg text-purple-400 group-hover:text-purple-700" />
+                            </li>
+                          </ul>
+                        </div>
+                      )}
+                      {/* Recent Lists Section */}
+                      <div>
+                        <div className="text-xs font-semibold text-gray-500 mb-1">recent lists</div>
+                        <ul className="space-y-2">
+                          {recentLists.map((list: Record<string, unknown>, idx: number) => (
+                            <li
+                              key={list._id as string || idx}
+                              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 cursor-pointer group transition"
+                              style={{
+                                background: typeof list.color === "string" ? list.color : "#fff",
+                                cursor: "pointer",
+                              }}
+                              onClick={() => router.push("/shopping-lists")}
+                            >
+                              <span className="flex-1 font-semibold text-base truncate text-gray-800 group-hover:text-purple-800">
+                                {list.name as string}
+                              </span>
+                              <FaChevronRight className="text-lg text-gray-400 group-hover:text-purple-700" />
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
             ) : (
               <div className="text-gray-500">No shopping lists yet! Add items to get started.</div>
             )}

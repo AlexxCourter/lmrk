@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth/next";
+import UserSettingsClient from "./UserSettingsClient";
 
 // Inline minimal NextAuth config for getServerSession
 const nextAuthOptions = {
@@ -18,6 +19,7 @@ type Session = {
   [key: string]: unknown;
 } | null;
 
+// Server component
 export default async function UserSettingsPage() {
   const session = (await getServerSession(
     nextAuthOptions as Record<string, unknown>
@@ -25,11 +27,7 @@ export default async function UserSettingsPage() {
   if (!session || !session.user) {
     redirect("/");
   }
-
-  return (
-    <div className="max-w-2xl mx-auto py-10 px-4">
-      <h1 className="text-2xl font-bold mb-4">User Settings</h1>
-      <p>Settings for your account will be available here.</p>
-    </div>
-  );
+  // Hydrate user data for client
+  const user = session.user;
+  return <UserSettingsClient user={user} />;
 }

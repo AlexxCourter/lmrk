@@ -1,11 +1,11 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUserData } from "@/components/UserDataProvider";
 import { FaUsers, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, update } = useSession();
@@ -169,4 +169,12 @@ export default function AcceptInvitePage() {
   }
 
   return null;
+}
+
+export default function AcceptInvitePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <AcceptInviteContent />
+    </Suspense>
+  );
 }

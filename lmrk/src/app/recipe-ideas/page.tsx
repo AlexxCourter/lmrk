@@ -173,7 +173,7 @@ export default function RecipeIdeasPage() {
                   <div
                     key={String(recipe._id)}
                     className={`bg-white rounded-lg shadow p-3 flex flex-col items-center cursor-pointer border-2 ${selectedToShare?._id === recipe._id ? "border-purple-700" : "border-transparent"}`}
-                    onClick={() => setSelectedToShare(recipe)}
+                    onClick={() => setSelectedToShare(recipe as unknown as UserRecipe)}
                   >
                     <Icon className="text-purple-700 text-2xl mb-2" />
                     <span className="font-bold text-black mb-1">{recipe.name}</span>

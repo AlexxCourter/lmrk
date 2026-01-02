@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -13,7 +13,7 @@ function validatePassword(password: string) {
   return /^(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,}$/.test(password);
 }
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState({
@@ -26,7 +26,7 @@ export default function SignUpPage() {
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
 
-  const fromFamilyInvite = searchParams.get("from") === "family-invite";
+  const fromFamilyInvite = searchParams?.get("from") === "family-invite";
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -216,5 +216,13 @@ export default function SignUpPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignUpForm />
+    </Suspense>
   );
 }

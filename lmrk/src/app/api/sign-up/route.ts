@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
     preferences: {
       theme: "light",
       notifications: false,
+      newsletter: false,
       language: "en-US",
     },
     shoppingLists: [],

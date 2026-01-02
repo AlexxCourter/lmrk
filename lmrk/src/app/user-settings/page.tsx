@@ -27,7 +27,6 @@ export default async function UserSettingsPage() {
   if (!session || !session.user) {
     redirect("/");
   }
-  // Hydrate user data for client
-  const user = session.user;
-  return <UserSettingsClient user={user} />;
+  // No need to pass user, client will use useSession
+  return <UserSettingsClient />;
 }

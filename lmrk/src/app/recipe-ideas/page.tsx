@@ -2,7 +2,10 @@
 import { useState, useEffect } from "react";
 import { FaRegSave } from "react-icons/fa";
 import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { ThemeController } from "@/theme/ThemeController";
 import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal";
+import { useUserData } from "@/components/UserDataProvider";
 
 
 // Types
@@ -15,21 +18,25 @@ type SharedRecipeDoc = {
   recipe: UserRecipe;
 };
 
-type SessionWithShared = {
-  user?: {
-    sharedRecipe?: string;
-    recipes?: UserRecipe[];
-    name?: string;
-    email?: string;
-    image?: string;
-  };
-  [key: string]: unknown;
-};
+// Use Session from next-auth, which includes preferences
 
 export default function RecipeIdeasPage() {
   const { data: sessionData, update } = useSession();
-  const session = sessionData as SessionWithShared | null;
-  const userRecipes = session?.user?.recipes || [];
+  const session = sessionData as Session | null;
+  const { data: userData } = useUserData();
+  
+  // Get user recipes from context
+  const userRecipes = userData?.recipes || [];
+  
+  useEffect(() => {
+    if (session?.user?.preferences?.theme) {
+      const ctrl = ThemeController.getInstance();
+      if (session.user.preferences.theme === "moonlight") ctrl.setMoonlight();
+      else if (session.user.preferences.theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [session?.user?.preferences?.theme]);
+  
   const sharedRecipeId = session?.user?.sharedRecipe || null;
   const username = session?.user?.name || "";
   const userId = session?.user?.email || "";
@@ -237,14 +244,20 @@ export default function RecipeIdeasPage() {
   }
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center py-10 px-4" style={{ background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)" }}>
+  <div className="min-h-screen w-full flex flex-col items-center py-10 px-4" style={{ background: "var(--theme-pageBg)" }}>
       <h1 className="text-2xl font-bold mb-8 text-white flex items-center gap-2">Recipe Ideas</h1>
-      {/* Share card at top */}
-      <div className="w-full max-w-5xl mb-8 flex flex-row gap-6 items-center">
-        <ShareCard />
+      {/* Share card at top, then search bar below on mobile */}
+      <div className="w-full max-w-5xl mb-8 flex flex-col sm:flex-row gap-4 sm:gap-6 items-center">
+        <div className="w-full sm:w-auto flex flex-col items-center">
+          <div className="w-full flex justify-center">
+            <div className="w-2/3 sm:w-auto">
+              <ShareCard />
+            </div>
+          </div>
+        </div>
         {/* Search and Filter UI */}
-        <div className="flex items-center gap-4 ml-2 flex-1">
-          <div className="flex items-center bg-white rounded-xl shadow px-4 py-2 gap-3 w-full max-w-lg border border-purple-100">
+        <div className="w-full flex-1 flex items-center">
+          <div className="flex items-center bg-white rounded-xl shadow px-2 sm:px-4 py-2 gap-2 sm:gap-3 w-full border border-purple-100 mx-2 sm:mx-0">
             {/* Search bar */}
             <div className="relative flex items-center flex-1">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-500">
@@ -252,11 +265,11 @@ export default function RecipeIdeasPage() {
               </span>
               <input
                 type="text"
-                className="pl-12 pr-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 text-base min-w-[200px] max-w-[320px] bg-white placeholder-gray-400"
+                className="pl-12 pr-4 py-2 border border-purple-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-300 focus:border-purple-400 text-base w-full bg-white placeholder-gray-400"
                 placeholder="Search shared recipes..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{ minWidth: 200 }}
+                style={{ minWidth: 0 }}
               />
             </div>
             {/* Filter icon */}
@@ -264,7 +277,7 @@ export default function RecipeIdeasPage() {
               className="p-3 rounded-full hover:bg-purple-100 focus:outline-none border border-purple-200 text-purple-700"
               title="Filters"
               onClick={() => setFiltersOpen(true)}
-              style={{ minWidth: 48, minHeight: 48 }}
+              style={{ minWidth: 40, minHeight: 40 }}
             >
               <svg width="28" height="28" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2.382a1 1 0 0 1-.293.707l-5.414 5.414A2 2 0 0 0 14 13.414V19a1 1 0 0 1-1.447.894l-2-1A1 1 0 0 1 10 18v-4.586a2 2 0 0 0-.293-1.121l-5.414-5.414A1 1 0 0 1 4 6.382V4Z"/></svg>
             </button>

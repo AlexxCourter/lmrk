@@ -75,7 +75,10 @@ function ResetPasswordForm() {
         )}
         <button
           type="submit"
-          className="bg-purple-700 text-white rounded py-3 text-lg font-semibold hover:bg-purple-800"
+          className="rounded py-3 text-lg font-semibold"
+          style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)" }}
+          onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "var(--theme-buttonHover)")}
+          onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "var(--theme-buttonBg)")}
           disabled={loading}
         >
           {loading ? "Resetting..." : "Reset Password"}

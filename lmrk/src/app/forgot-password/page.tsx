@@ -59,7 +59,10 @@ export default function ForgotPasswordPage() {
         )}
         <button
           type="submit"
-          className="bg-purple-700 text-white rounded py-3 text-lg font-semibold hover:bg-purple-800"
+          className="rounded py-3 text-lg font-semibold"
+          style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)" }}
+          onMouseEnter={(e) => !(loading || cooldown > 0) && (e.currentTarget.style.background = "var(--theme-buttonHover)")}
+          onMouseLeave={(e) => !(loading || cooldown > 0) && (e.currentTarget.style.background = "var(--theme-buttonBg)")}
           disabled={loading || cooldown > 0}
         >
           {loading ? "Sending..." : cooldown > 0 ? `Send Reset Link (${cooldown})` : "Send Reset Link"}

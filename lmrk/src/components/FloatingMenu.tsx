@@ -61,12 +61,20 @@ export default function FloatingMenu() {
       )}
       <div
         ref={menuRef}
-        className="fixed bottom-15 left-1/2 -translate-x-1/2 z-50 bg-white border-3 border-purple-700 rounded-xl shadow-md shadow-gray-700 flex items-center justify-between px-2"
-        style={{ height: 56, minHeight: 56, maxHeight: 56, minWidth: 200, width: 200 }}
+        className="fixed bottom-15 left-1/2 -translate-x-1/2 z-50 rounded-xl shadow-md shadow-gray-700 flex items-center justify-between px-2"
+        style={{
+          height: 56,
+          minHeight: 56,
+          maxHeight: 56,
+          minWidth: 200,
+          width: 200,
+          background: "var(--theme-floatingMenuBg)",
+          border: "3px solid var(--theme-main)"
+        }}
       >
         <button
-          className="flex items-center justify-center text-purple-700 hover:text-purple-900 transition cursor-pointer"
-          style={{ fontSize: 32, width: 48, height: 48 }}
+          className="flex items-center justify-center transition cursor-pointer"
+          style={{ fontSize: 32, width: 48, height: 48, color: "var(--theme-main)" }}
           aria-label="Recipes"
           onClick={() => router.push("/recipes")}
         >
@@ -74,7 +82,7 @@ export default function FloatingMenu() {
         </button>
         <div className="relative flex items-center justify-center" style={{ flex: "0 0 56px" }}>
           <button
-            className="bg-purple-700 text-white font-bold rounded-full flex items-center justify-center border-4 hover:bg-purple-900 transition duration-200 ease-in-out cursor-pointer"
+            className="font-bold rounded-full flex items-center justify-center border-4 transition duration-200 ease-in-out cursor-pointer"
             style={{
               width: 60,
               height: 60,
@@ -85,6 +93,8 @@ export default function FloatingMenu() {
               transform: "translateX(-50%)",
               zIndex: 10,
               boxShadow: "0 2px 8px rgba(109,40,217,0.15)",
+              background: "var(--theme-floatingMenuBg)",
+              color: "var(--theme-floatingMenuIcon)",
               border: "3px solid white",
             }}
             aria-label="Create"
@@ -105,8 +115,8 @@ export default function FloatingMenu() {
               {/* New Recipe Button with label */}
               <div className="flex items-center animate-float-pop">
                 <button
-                  className="bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
-                  style={{ width: 48, height: 48, fontSize: 22 }}
+                  className="rounded-full flex items-center justify-center shadow-lg cursor-pointer"
+                  style={{ width: 48, height: 48, fontSize: 22, background: "var(--theme-floatingMenuIcon)", color: "var(--theme-floatingMenuBg)", border: "2px solid var(--theme-main)" }}
                   aria-label="Create Recipe"
                   onClick={() => {
                     setShowCreate(false);
@@ -115,15 +125,15 @@ export default function FloatingMenu() {
                 >
                   <FaAppleAlt />
                 </button>
-                <span className="ml-3 text-xs font-semibold text-purple-700 bg-white bg-opacity-90 px-2 py-0.5 rounded shadow whitespace-nowrap">
+                <span className="ml-3 text-xs font-semibold px-2 py-0.5 rounded shadow whitespace-nowrap" style={{ color: "var(--theme-main)", background: "var(--theme-floatingMenuBg)", opacity: 0.9 }}>
                   New Recipe
                 </span>
               </div>
               {/* New List Button with label */}
               <div className="flex items-center animate-float-pop" style={{ marginTop: 2 }}>
                 <button
-                  className="bg-white border-2 border-purple-700 text-purple-700 rounded-full flex items-center justify-center shadow-lg hover:bg-purple-200 cursor-pointer"
-                  style={{ width: 48, height: 48, fontSize: 22 }}
+                  className="rounded-full flex items-center justify-center shadow-lg cursor-pointer"
+                  style={{ width: 48, height: 48, fontSize: 22, background: "var(--theme-floatingMenuBg)", color: "var(--theme-main)", border: "2px solid var(--theme-main)" }}
                   aria-label="Create Shopping List"
                   onClick={() => {
                     setShowCreate(false);
@@ -132,7 +142,7 @@ export default function FloatingMenu() {
                 >
                   <FaListUl />
                 </button>
-                <span className="ml-3 text-xs font-semibold text-purple-700 bg-white bg-opacity-90 px-2 py-0.5 rounded shadow whitespace-nowrap">
+                <span className="ml-3 text-xs font-semibold px-2 py-0.5 rounded shadow whitespace-nowrap" style={{ color: "var(--theme-main)", background: "var(--theme-floatingMenuBg)", opacity: 0.9 }}>
                   New List
                 </span>
               </div>
@@ -156,8 +166,8 @@ export default function FloatingMenu() {
         </div>
         <div className="relative">
           <button
-            className="flex items-center justify-center text-purple-700 hover:text-purple-900 transition cursor-pointer"
-            style={{ fontSize: 32, width: 48, height: 48 }}
+            className="flex items-center justify-center transition cursor-pointer"
+            style={{ fontSize: 32, width: 48, height: 48, color: "var(--theme-main)" }}
             aria-label="Lists"
             onClick={() => router.push("/shopping-lists")}
           >

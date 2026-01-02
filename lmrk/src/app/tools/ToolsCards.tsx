@@ -1,10 +1,11 @@
 "use client";
 import { FaPlus, FaChevronRight } from "react-icons/fa";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import RecipeModal from "@/components/RecipeModal";
 import ShoppingListModal from "@/components/ShoppingListModal";
 import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal"; // Reuse icon list
+import { ThemeController } from "@/theme/ThemeController";
 
 export default function ToolsCards({
   recipes,
@@ -18,27 +19,75 @@ export default function ToolsCards({
   const router = useRouter();
   const [showModal, setShowModal] = useState(false);
   const [showShoppingModal, setShowShoppingModal] = useState(false);
+  const [themeColors, setThemeColors] = useState({ main: "#6d28d9", menuBarBg: "#6d28d9" });
+
+  useEffect(() => {
+    const ctrl = ThemeController.getInstance();
+    setThemeColors(ctrl.colors);
+  }, []);
 
   // Defensive: ensure recipes is always an array
   const recipeList = Array.isArray(recipes) ? recipes : [];
+  // Family share state - check user.groupInfo?.groupEnabled
+  const groupInfo = user?.groupInfo as { groupEnabled?: boolean } | undefined;
+  const familyShareEnabled = !!groupInfo?.groupEnabled;
 
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Recipes Card */}
         <div className="bg-white rounded-lg shadow p-6 flex flex-col relative min-h-[220px]">
-          <h2 className="text-xl font-bold mb-4">Recipes</h2>
+          {/* Family Share Section */}
+          <div className="mb-4">
+            <h3 className="text-lg font-bold mb-2" style={{ color: themeColors.main }}>Family Share</h3>
+            {!familyShareEnabled ? (
+              <div className="text-gray-500 text-sm">Enable family share to create your family cook book.</div>
+            ) : (
+              <div
+                className="flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer group transition"
+                style={{ 
+                  borderColor: themeColors.main,
+                  background: `${themeColors.main}10`
+                }}
+                onClick={() => router.push("/family/book")}
+                tabIndex={0}
+                role="button"
+                aria-label="Go to Family cook book"
+                onMouseEnter={(e) => (e.currentTarget.style.background = `${themeColors.main}20`)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = `${themeColors.main}10`)}
+              >
+                <span className="text-2xl">📖</span>
+                <span className="flex-1 font-semibold text-base truncate" style={{ color: themeColors.main }}>
+                  Family cook book
+                </span>
+                <FaChevronRight className="text-lg" style={{ color: themeColors.main, opacity: 0.6 }} />
+              </div>
+            )}
+          </div>
+          <h2 className="text-xl font-bold mb-4" style={{ color: themeColors.main }}>Recipes</h2>
           <div className="flex-1">
             {recipeList.length > 0 ? (
               <ul className="space-y-2">
-                {recipeList.map((recipe: Record<string, unknown>, idx: number) => {
+                {recipeList.slice(0, 5).map((recipe: Record<string, unknown>, idx: number) => {
                   const Icon = RECIPE_ICONS?.[recipe.icon as number]?.icon || RECIPE_ICONS[0].icon;
                   return (
                     <li
                       key={recipe._id as string || idx}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 bg-white hover:bg-purple-700 hover:text-white transition cursor-pointer group"
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg border border-gray-200 bg-white transition cursor-pointer group"
                       style={{ cursor: "pointer" }}
                       onClick={() => router.push("/recipes")}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = themeColors.menuBarBg;
+                        e.currentTarget.style.color = "#fff";
+                        const icon = e.currentTarget.querySelector('.chevron-icon') as HTMLElement;
+                        if (icon) icon.style.color = "#fff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "#fff";
+                        e.currentTarget.style.color = "";
+                        const icon = e.currentTarget.querySelector('.chevron-icon') as HTMLElement;
+                        if (icon) icon.style.color = "#9ca3af";
+                      }}
                     >
                       <span className="text-2xl">
                         <Icon />
@@ -46,7 +95,7 @@ export default function ToolsCards({
                       <span className="flex-1 font-semibold text-base truncate">
                         {recipe.name as string}
                       </span>
-                      <FaChevronRight className="text-lg text-gray-400 group-hover:text-white" />
+                      <FaChevronRight className="text-lg text-gray-400 chevron-icon" />
                     </li>
                   );
                 })}
@@ -58,16 +107,21 @@ export default function ToolsCards({
           <div className="h-8" /> {/* Spacer to ensure buttons don't overlap text */}
           <div className="absolute bottom-4 right-4 flex items-center gap-2">
             <button
-              className="bg-purple-700 text-white px-4 py-2 rounded font-semibold hover:bg-purple-800 transition text-sm cursor-pointer"
+              className="text-white px-4 py-2 rounded font-semibold transition text-sm cursor-pointer"
+              style={{ background: themeColors.menuBarBg }}
               onClick={() => router.push("/recipes")}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               My Recipes
             </button>
             <button
-              className="bg-purple-700 text-white rounded-full p-2 hover:bg-purple-800 transition flex items-center justify-center cursor-pointer"
-              style={{ width: 36, height: 36 }}
+              className="text-white rounded-full p-2 transition flex items-center justify-center cursor-pointer"
+              style={{ width: 36, height: 36, background: themeColors.menuBarBg }}
               aria-label="Create Recipe"
               onClick={() => setShowModal(true)}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <FaPlus />
             </button>
@@ -75,7 +129,7 @@ export default function ToolsCards({
         </div>
         {/* Shopping Card */}
         <div className="bg-white rounded-lg shadow p-6 flex flex-col relative min-h-[220px]">
-          <h2 className="text-xl font-bold mb-4">Shopping</h2>
+          <h2 className="text-xl font-bold mb-4" style={{ color: themeColors.main }}>Shopping</h2>
           <div className="flex-1">
             {shoppingLists && shoppingLists.length > 0 ? (
               <>
@@ -102,17 +156,20 @@ export default function ToolsCards({
                           <ul>
                             <li
                               key={activeList._id as string}
-                              className="flex items-center gap-3 px-4 py-3 rounded-lg border border-purple-300 bg-purple-50 cursor-pointer group transition"
+                              className="flex items-center gap-3 px-4 py-3 rounded-lg border cursor-pointer group transition"
                               style={{
-                                background: typeof activeList.color === "string" ? activeList.color : "#f3e8ff",
+                                background: typeof activeList.color === "string" ? activeList.color : `${themeColors.main}10`,
+                                borderColor: themeColors.main,
                                 cursor: "pointer",
                               }}
                               onClick={() => router.push("/shopping-lists")}
+                              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
+                              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
                             >
-                              <span className="flex-1 font-semibold text-base truncate text-purple-900 group-hover:text-purple-800">
+                              <span className="flex-1 font-semibold text-base truncate" style={{ color: themeColors.main }}>
                                 {activeList.name as string}
                               </span>
-                              <FaChevronRight className="text-lg text-purple-400 group-hover:text-purple-700" />
+                              <FaChevronRight className="text-lg" style={{ color: themeColors.main, opacity: 0.6 }} />
                             </li>
                           </ul>
                         </div>
@@ -130,11 +187,21 @@ export default function ToolsCards({
                                 cursor: "pointer",
                               }}
                               onClick={() => router.push("/shopping-lists")}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = themeColors.main;
+                                const icon = e.currentTarget.querySelector('.chevron-recent') as HTMLElement;
+                                if (icon) icon.style.color = themeColors.main;
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = "#e5e7eb";
+                                const icon = e.currentTarget.querySelector('.chevron-recent') as HTMLElement;
+                                if (icon) icon.style.color = "#9ca3af";
+                              }}
                             >
-                              <span className="flex-1 font-semibold text-base truncate text-gray-800 group-hover:text-purple-800">
+                              <span className="flex-1 font-semibold text-base truncate text-gray-800">
                                 {list.name as string}
                               </span>
-                              <FaChevronRight className="text-lg text-gray-400 group-hover:text-purple-700" />
+                              <FaChevronRight className="text-lg text-gray-400 chevron-recent" />
                             </li>
                           ))}
                         </ul>
@@ -150,16 +217,21 @@ export default function ToolsCards({
           <div className="h-8" /> {/* Spacer to ensure buttons don't overlap text */}
           <div className="absolute bottom-4 right-4 flex items-center gap-2">
             <button
-              className="bg-purple-700 text-white px-4 py-2 rounded font-semibold hover:bg-purple-800 transition text-sm cursor-pointer"
+              className="text-white px-4 py-2 rounded font-semibold transition text-sm cursor-pointer"
+              style={{ background: themeColors.menuBarBg }}
               onClick={() => router.push("/shopping-lists")}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               My Lists
             </button>
             <button
-              className="bg-purple-700 text-white rounded-full p-2 hover:bg-purple-800 transition flex items-center justify-center cursor-pointer"
-              style={{ width: 36, height: 36 }}
+              className="text-white rounded-full p-2 transition flex items-center justify-center cursor-pointer"
+              style={{ width: 36, height: 36, background: themeColors.menuBarBg }}
               aria-label="Create Shopping List"
               onClick={() => setShowShoppingModal(true)}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
             >
               <FaPlus />
             </button>

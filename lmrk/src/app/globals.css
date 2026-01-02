@@ -1,17 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Bree+Serif&display=swap');
 @import "tailwindcss";
 
+
 :root {
   --background: #ffffff;
   --foreground: #000000;
   --font-custom: 'Bree Serif', serif;
+  --theme-main: #6d28d9;
+  --theme-gradientFrom: #6d28d9;
+  --theme-gradientTo: #a78bfa;
+  --theme-menuBarBg: #6d28d9;
+  --theme-menuBarText: #fff;
+  --theme-floatingMenuBg: #fff;
+  --theme-floatingMenuIcon: #6d28d9;
+  --theme-pageBg: linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%);
+  --theme-buttonBg: #6d28d9;
+  --theme-buttonHover: #5b21b6;
+  --theme-buttonText: #fff;
+  --theme-badgeBg: #f3e8ff;
+  --theme-badgeText: #6d28d9;
+  --theme-cardBorder: #6d28d9;
+  --theme-pageHeading: #ffffff;
+  --theme-pageSubtext: rgba(255, 255, 255, 0.9);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+/* Custom class for theme main color (for icons that don't accept style prop) */
+.theme-main-color {
+  color: var(--theme-main) !important;
 }
 
 @media (prefers-color-scheme: dark) {

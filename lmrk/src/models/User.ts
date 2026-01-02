@@ -1,3 +1,9 @@
+export type Preferences = {
+  theme: string;
+  notifications: boolean;
+  newsletter: boolean;
+  language: string;
+};
 import { Collection, ObjectId } from "mongodb";
 import { getDb } from "../lib/mongodb";
 
@@ -35,11 +41,7 @@ export interface User {
   email: string;
   profileImage: string;
   bio: string;
-  preferences: {
-    theme: string;
-    notifications: boolean;
-    language: string;
-  };
+  preferences: Preferences;
   shoppingLists: ShoppingList[];
   recipes: Recipe[];
   passwordHash: string;
@@ -54,6 +56,15 @@ export interface User {
   a_id?: string;
   // Web push subscription
   pushSubscription?: unknown;
+
+  // Family/group sharing info
+  groupInfo?: {
+    groupId: string; // Group ID if user is in a group
+    groupEnabled: boolean; // True if user has enabled family sharing
+    role: "owner" | "member"; // User's role in the group
+    familyName?: string; // Name of the family group
+    joinedAt: string; // ISO date string
+  };
 }
 
 export async function getUsersCollection(): Promise<Collection<User>> {

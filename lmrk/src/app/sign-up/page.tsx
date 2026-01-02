@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 
 function validateEmail(email: string) {
@@ -15,6 +15,7 @@ function validatePassword(password: string) {
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -24,6 +25,8 @@ export default function SignUpPage() {
   const [error, setError] = useState("");
   const [touched, setTouched] = useState<{ [key: string]: boolean }>({});
   const [loading, setLoading] = useState(false);
+
+  const fromFamilyInvite = searchParams.get("from") === "family-invite";
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -92,7 +95,13 @@ export default function SignUpPage() {
           password: form.password,
         });
         if (signInResult?.ok) {
-          router.replace("/tools");
+          // Check if there's a pending family invite
+          const pendingInvite = sessionStorage.getItem("pendingFamilyInvite");
+          if (pendingInvite) {
+            router.replace(`/family/accept-invite?token=${pendingInvite}`);
+          } else {
+            router.replace("/tools");
+          }
         } else {
           setError("Sign up succeeded, but automatic login failed. Please log in manually.");
         }
@@ -111,6 +120,16 @@ export default function SignUpPage() {
     <div className="min-h-screen flex items-center justify-center" style={{ background: "#f3e8ff" }}>
       <div className="bg-white rounded-lg shadow p-8 w-full max-w-md">
         <h1 className="text-2xl font-bold mb-6 text-center">Sign Up</h1>
+        {fromFamilyInvite && (
+          <div className="bg-purple-50 border border-purple-200 rounded p-3 text-sm mb-4">
+            <p className="text-purple-900 font-medium">
+              🎉 You&apos;ve been invited to join a family group!
+            </p>
+            <p className="text-purple-700 text-xs mt-1">
+              Create your account to accept the invitation.
+            </p>
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-sm font-medium mb-1" htmlFor="email">
@@ -186,7 +205,10 @@ export default function SignUpPage() {
           )}
           <button
             type="submit"
-            className="w-full bg-purple-700 text-white py-2 rounded font-semibold hover:bg-purple-800 transition"
+            className="w-full py-2 rounded font-semibold transition"
+            style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)" }}
+            onMouseEnter={(e) => (isFormValid && !loading) && (e.currentTarget.style.background = "var(--theme-buttonHover)")}
+            onMouseLeave={(e) => (isFormValid && !loading) && (e.currentTarget.style.background = "var(--theme-buttonBg)")}
             disabled={!isFormValid || loading}
           >
             {loading ? "Signing Up..." : "Sign Up"}

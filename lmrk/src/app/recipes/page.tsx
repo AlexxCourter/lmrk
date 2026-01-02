@@ -2,9 +2,12 @@
 import { useState, useEffect } from "react";
 import { FaShoppingCart, FaThLarge, FaList, FaFilter, FaTimes, FaPencilAlt } from "react-icons/fa";
 import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { ThemeController } from "@/theme/ThemeController";
 import RecipeModal from "@/components/RecipeModal";
 import { useRef } from "react";
 import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal";
+import { useUserData } from "@/components/UserDataProvider";
 
 // Extend the user type to include recipes
 type Recipe = {
@@ -19,28 +22,33 @@ type Recipe = {
   [key: string]: unknown;
 };
 
-type UserWithRecipes = {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  recipes?: Recipe[];
-  activeList?: string;
-  shoppingLists?: Record<string, unknown>[];
-};
-
-type SessionWithRecipes = {
-  user?: UserWithRecipes;
-  [key: string]: unknown;
-};
+// Use Session from next-auth, which includes preferences
 
 export default function RecipesPage() {
   const { data: sessionData, update } = useSession();
-  const session = sessionData as SessionWithRecipes | null;
+  const session = sessionData as Session | null;
+  const { data: userData, refreshData } = useUserData();
+  
+  // Get recipes and shopping lists from context
+  const recipes = userData?.recipes || [];
+  const shoppingLists = userData?.shoppingLists || [];
+  
+  useEffect(() => {
+    if (session?.user?.preferences?.theme) {
+      const ctrl = ThemeController.getInstance();
+      if (session.user.preferences.theme === "moonlight") ctrl.setMoonlight();
+      else if (session.user.preferences.theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [session?.user?.preferences?.theme]);
 
-  // Use recipes from the user's session data
-  const recipes = session?.user?.recipes || [];
+  // Type guard for Recipe
+  function isRecipe(obj: unknown): obj is Recipe {
+    return obj !== null && obj !== undefined && typeof obj === "object" && typeof (obj as Recipe).name === "string" && (typeof (obj as Recipe).id === "string" || typeof (obj as Recipe)._id === "string");
+  }
 
-  const [selected, setSelected] = useState<Record<string, unknown> | null>(null);
+
+  const [selected, setSelected] = useState<Recipe | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [editRecipe, setEditRecipe] = useState<Recipe | null>(null);
 
@@ -68,9 +76,8 @@ export default function RecipesPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Filter recipes based on filters
-  let filteredRecipes = recipes.filter((recipe: Recipe) => {
-    // Defensive: skip undefined/null recipes
-    if (!recipe) return false;
+  const filteredRecipes: Recipe[] = recipes.filter((recipe: Recipe) => {
+    if (!isRecipe(recipe)) return false;
     let match = true;
     if (filterMealType && recipe.mealType !== filterMealType) match = false;
     if (
@@ -94,8 +101,7 @@ export default function RecipesPage() {
     ) {
       setListSelected(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterMealType, filterTag, filterColor, filteredRecipes, viewMode]);
+  }, [filterMealType, filterTag, filterColor, filteredRecipes, viewMode, listSelected]);
 
   // Helper to transform a recipe to RecipeModal's expected fields
   function getModalInitialData(recipe: Recipe) {
@@ -104,8 +110,7 @@ export default function RecipesPage() {
       iconIdx: typeof recipe.icon === "number" ? recipe.icon : 0,
       description: recipe.description || "",
       ingredients: Array.isArray(recipe.ingredients)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ? recipe.ingredients.map((ing: any) => ({
+        ? recipe.ingredients.map((ing: { name?: string; quantity?: string; amount?: string; unit?: string; measure?: string }) => ({
             name: ing.name || "",
             // Safely cast legacy keys to new keys for quantity and unit
             quantity:
@@ -189,13 +194,11 @@ export default function RecipesPage() {
       if (res.ok) {
         await update();
         // Find the active list name
-        const activeList = session && session.user && session.user.shoppingLists
-          ? session.user.shoppingLists.find(
-              (list: Record<string, unknown>) =>
-                (list._id?.toString?.() || list._id) ===
+        const activeList = shoppingLists.find(
+          (list: Record<string, unknown>) =>
+            (list._id?.toString?.() || list._id) ===
                 (session?.user?.activeList?.toString?.() || session?.user?.activeList)
-            )
-          : undefined;
+        );
         listName = typeof activeList?.name === "string" ? activeList.name : "shopping list";
         showToast(`${addedCount} items added to ${listName}`);
       } else {
@@ -232,16 +235,17 @@ export default function RecipesPage() {
     return (
       <div
         className="min-h-screen w-full flex flex-col items-center justify-center"
-        style={{
-          background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)",
-        }}
+        style={{ background: "var(--theme-pageBg)" }}
       >
         <div className="bg-white rounded-lg shadow p-8 flex flex-col items-center justify-center min-w-[300px] min-h-[200px]">
           <h2 className="text-xl font-bold mb-4 text-black">
             No recipes yet.
           </h2>
           <button
-            className="bg-purple-700 text-white px-6 py-2 rounded font-semibold hover:bg-purple-800 transition text-base"
+            className="px-6 py-2 rounded font-semibold transition text-base"
+            style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--theme-buttonHover)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "var(--theme-buttonBg)"}
             onClick={() => setShowModal(true)}
           >
             New Recipe
@@ -254,36 +258,14 @@ export default function RecipesPage() {
     );
   }
 
-  // Filter recipes based on filters
-    filteredRecipes = recipes.filter((recipe: Recipe) => {
-    // Defensive: skip undefined/null recipes
-    if (!recipe) return false;
-    let match = true;
-    if (filterMealType && recipe.mealType !== filterMealType) match = false;
-    if (
-      filterTag &&
-      !(
-        Array.isArray(recipe.tags) &&
-        recipe.tags.some(tag => typeof tag === "string" && tag.toLowerCase().includes(filterTag.toLowerCase()))
-      )
-    )
-      match = false;
-    if (filterColor && recipe.color !== filterColor) match = false;
-    return match;
-  });
+  // (Already handled above, remove duplicate)
 
   // Ensure listSelected is always in filteredRecipes
   // If not, reset to first filtered recipe
-  if (
-    viewMode === "list" &&
-    listSelected &&
-    !filteredRecipes.some(r => r.id === listSelected.id)
-  ) {
-    setListSelected(filteredRecipes.length > 0 ? filteredRecipes[0] : null);
-  }
+  // (Handled by useEffect above)
 
   // Helper to get selected recipe for list view
-  const selectedRecipe =
+  const selectedRecipe: Recipe | null =
     viewMode === "list"
       ? (listSelected || (filteredRecipes.length > 0 ? filteredRecipes[0] : null))
       : selected;
@@ -303,9 +285,7 @@ export default function RecipesPage() {
   return (
     <div
       className="min-h-screen w-full flex flex-col items-center py-10 px-4"
-      style={{
-        background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)",
-      }}
+      style={{ background: "var(--theme-pageBg)" }}
     >
       {/* Toast message */}
       {toast.visible && (
@@ -362,7 +342,10 @@ export default function RecipesPage() {
         My Recipes
         {viewMode === "list" && (
           <button
-            className="sm:hidden ml-2 p-2 rounded-full bg-white text-purple-700 border border-purple-200 shadow hover:bg-purple-100"
+            className="sm:hidden ml-2 p-2 rounded-full bg-white shadow"
+            style={{ color: "var(--theme-main)", borderColor: "var(--theme-main)", borderWidth: "1px" }}
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--theme-badgeBg)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "white"}
             onClick={() => setSidebarOpen(true)}
             aria-label="Open recipe list"
             type="button"
@@ -377,16 +360,26 @@ export default function RecipesPage() {
       </h1>
       {/* View mode menu bar */}
       <div className="flex items-center justify-center w-full max-w-5xl mb-8">
-        <div className="bg-white rounded-full shadow px-4 py-2 flex gap-4 items-center border border-purple-200">
+        <div className="bg-white rounded-full shadow px-4 py-2 flex gap-4 items-center" style={{ borderColor: "var(--theme-main)", borderWidth: "1px" }}>
           <button
-            className={`p-2 rounded-full hover:bg-purple-100 focus:outline-none ${viewMode === "card" ? "bg-purple-100" : ""}`}
+            className="p-2 rounded-full focus:outline-none"
+            style={{
+              background: viewMode === "card" ? "var(--theme-badgeBg)" : "transparent"
+            }}
+            onMouseEnter={(e) => { if (viewMode !== "card") e.currentTarget.style.background = "var(--theme-badgeBg)"; }}
+            onMouseLeave={(e) => { if (viewMode !== "card") e.currentTarget.style.background = "transparent"; }}
             title="Card Mode"
             onClick={() => setViewMode("card")}
           >
-            <FaThLarge className="text-purple-700 text-xl" />
+            <FaThLarge className="text-xl" style={{ color: "var(--theme-main)" }} />
           </button>
           <button
-            className={`p-2 rounded-full hover:bg-purple-100 focus:outline-none ${viewMode === "list" ? "bg-purple-100" : ""}`}
+            className="p-2 rounded-full focus:outline-none"
+            style={{
+              background: viewMode === "list" ? "var(--theme-badgeBg)" : "transparent"
+            }}
+            onMouseEnter={(e) => { if (viewMode !== "list") e.currentTarget.style.background = "var(--theme-badgeBg)"; }}
+            onMouseLeave={(e) => { if (viewMode !== "list") e.currentTarget.style.background = "transparent"; }}
             title="List Mode"
             onClick={() => {
               setViewMode("list");
@@ -394,14 +387,16 @@ export default function RecipesPage() {
               setSelected(null);
             }}
           >
-            <FaList className="text-purple-700 text-xl" />
+            <FaList className="text-xl" style={{ color: "var(--theme-main)" }} />
           </button>
           <button
-            className="p-2 rounded-full hover:bg-purple-100 focus:outline-none"
+            className="p-2 rounded-full focus:outline-none"
+            onMouseEnter={(e) => e.currentTarget.style.background = "var(--theme-badgeBg)"}
+            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
             title="Filters"
             onClick={() => setFiltersOpen(true)}
           >
-            <FaFilter className="text-purple-700 text-xl" />
+            <FaFilter className="text-xl" style={{ color: "var(--theme-main)" }} />
           </button>
         </div>
       </div>
@@ -465,8 +460,11 @@ export default function RecipesPage() {
               <label className="block text-black font-semibold mb-1">Color</label>
               <div className="flex gap-2 flex-wrap">
                 <button
-                  className={`w-7 h-7 rounded-full border-2 ${filterColor === "" ? "border-purple-700" : "border-gray-300"}`}
-                  style={{ background: "#fff" }}
+                  className="w-7 h-7 rounded-full border-2"
+                  style={{ 
+                    background: "#fff",
+                    borderColor: filterColor === "" ? "var(--theme-main)" : "#d1d5db"
+                  }}
                   onClick={() => setFilterColor("")}
                   title="All"
                   type="button"
@@ -474,8 +472,11 @@ export default function RecipesPage() {
                 {colorOptions.map(color => (
                   <button
                     key={color}
-                    className={`w-7 h-7 rounded-full border-2 ${filterColor === color ? "border-purple-700" : "border-gray-300"}`}
-                    style={{ background: color }}
+                    className="w-7 h-7 rounded-full border-2"
+                    style={{ 
+                      background: color,
+                      borderColor: filterColor === color ? "var(--theme-main)" : "#d1d5db"
+                    }}
                     onClick={() => setFilterColor(color)}
                     title={color}
                     type="button"
@@ -484,7 +485,10 @@ export default function RecipesPage() {
               </div>
             </div>
             <button
-              className="mt-4 bg-purple-700 text-white px-4 py-2 rounded font-semibold hover:bg-purple-800 transition"
+              className="mt-4 px-4 py-2 rounded font-semibold transition"
+              style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)" }}
+              onMouseEnter={(e) => e.currentTarget.style.background = "var(--theme-buttonHover)"}
+              onMouseLeave={(e) => e.currentTarget.style.background = "var(--theme-buttonBg)"}
               onClick={() => setFiltersOpen(false)}
             >
               Apply Filters
@@ -512,12 +516,12 @@ export default function RecipesPage() {
                   onClick={() => setSelected(recipe)}
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="text-purple-700 text-xl" />
+                    <Icon className="text-xl" style={{ color: "var(--theme-main)" }} />
                     <h2 className="text-lg font-bold text-black">
                       {typeof recipe.name === "string" ? recipe.name : ""}
                     </h2>
                     {recipe.mealType && (
-                      <span className="ml-2 px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-semibold">
+                      <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>
                         {recipe.mealType}
                       </span>
                     )}
@@ -532,7 +536,7 @@ export default function RecipesPage() {
                   {Array.isArray(recipe.tags) && recipe.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1 mb-5">
                       {recipe.tags.slice(0, 3).map((tag: string) => (
-                        <span key={tag} className="bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full">{tag}</span>
+                        <span key={tag} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>{tag}</span>
                       ))}
                     </div>
                   )}
@@ -586,19 +590,22 @@ export default function RecipesPage() {
                     onClick={e => e.stopPropagation()}
                   >
                     <button
-                      className="absolute top-2 right-2 text-black hover:text-purple-700 text-3xl"
+                      className="absolute top-2 right-2 text-black text-3xl"
+                      style={{ color: "#000" }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = "var(--theme-main)"}
+                      onMouseLeave={(e) => e.currentTarget.style.color = "#000"}
                       onClick={() => setSelected(null)}
                       aria-label="Close"
                     >
                       &times;
                     </button>
                     <div className="flex items-center gap-2 mb-2">
-                      <Icon className="text-purple-700 text-2xl" />
+                      <Icon className="text-2xl" style={{ color: "var(--theme-main)" }} />
                       <h2 className="text-xl font-bold text-black">
                         {typeof selected.name === "string" ? selected.name : ""}
                       </h2>
                       {typeof selected.mealType === "string" && (
-                        <span className="ml-2 px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-semibold">
+                        <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>
                           {selected.mealType}
                         </span>
                       )}
@@ -607,7 +614,7 @@ export default function RecipesPage() {
                     {Array.isArray(selected.tags) && selected.tags.length > 0 && (
                       <div className="mb-2 flex flex-wrap gap-1">
                         {selected.tags.map((tag: string) => (
-                          <span key={tag} className="bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full">{tag}</span>
+                          <span key={tag} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>{tag}</span>
                         ))}
                       </div>
                     )}
@@ -663,7 +670,10 @@ export default function RecipesPage() {
               />
               <div className="relative bg-white w-64 max-w-xs h-full shadow-lg flex flex-col py-4 px-2 z-50 animate-slide-in-left">
                 <button
-                  className="absolute top-2 right-2 text-2xl text-purple-700 hover:text-purple-900"
+                  className="absolute top-2 right-2 text-2xl"
+                  style={{ color: "var(--theme-main)" }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = "var(--theme-buttonHover)"}
+                  onMouseLeave={(e) => e.currentTarget.style.color = "var(--theme-main)"}
                   onClick={() => setSidebarOpen(false)}
                   aria-label="Close"
                 >
@@ -674,18 +684,16 @@ export default function RecipesPage() {
                   {filteredRecipes.map((recipe: Recipe, idx: number) => (
                     <li key={String(recipe.id ?? recipe._id ?? idx)}>
                       <button
-                        className={`w-full text-left px-4 py-2 rounded mb-1 font-medium transition border-l-4 ${
-                          (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
-                            ? "bg-purple-100 text-purple-700 border-purple-700"
-                            : "hover:bg-purple-50 text-black border-transparent"
-                        }`}
+                        className="w-full text-left px-4 py-2 rounded mb-1 font-medium transition border-l-4"
                         style={{
-                          borderColor:
-                            (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
-                              ? recipe.color || "#a78bfa"
-                              : undefined,
-                          // Remove boxShadow highlight
+                          background: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id ? "var(--theme-badgeBg)" : "transparent",
+                          color: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id ? "var(--theme-badgeText)" : "#000",
+                          borderColor: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
+                            ? recipe.color || "var(--theme-main)"
+                            : "transparent"
                         }}
+                        onMouseEnter={(e) => { if ((listSelected?.id ?? filteredRecipes[0]?.id) !== recipe.id) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                        onMouseLeave={(e) => { if ((listSelected?.id ?? filteredRecipes[0]?.id) !== recipe.id) e.currentTarget.style.background = "transparent"; }}
                         onClick={() => {
                           setListSelected(recipe);
                           setSidebarOpen(false);
@@ -707,18 +715,16 @@ export default function RecipesPage() {
               {filteredRecipes.map((recipe: Recipe, idx: number) => (
                 <li key={String(recipe.id ?? recipe._id ?? idx)}>
                   <button
-                    className={`w-full text-left px-4 py-2 rounded mb-1 font-medium transition border-l-4 ${
-                      (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
-                        ? "bg-purple-100 text-purple-700 border-purple-700"
-                        : "hover:bg-purple-50 text-black border-transparent"
-                    }`}
+                    className="w-full text-left px-4 py-2 rounded mb-1 font-medium transition border-l-4"
                     style={{
-                      borderColor:
-                        (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
-                          ? recipe.color || "#a78bfa"
-                          : undefined,
-                      // Remove boxShadow highlight
+                      background: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id ? "var(--theme-badgeBg)" : "transparent",
+                      color: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id ? "var(--theme-badgeText)" : "#000",
+                      borderColor: (listSelected?.id ?? filteredRecipes[0]?.id) === recipe.id
+                        ? recipe.color || "var(--theme-main)"
+                        : "transparent"
                     }}
+                    onMouseEnter={(e) => { if ((listSelected?.id ?? filteredRecipes[0]?.id) !== recipe.id) e.currentTarget.style.background = "rgba(0,0,0,0.03)"; }}
+                    onMouseLeave={(e) => { if ((listSelected?.id ?? filteredRecipes[0]?.id) !== recipe.id) e.currentTarget.style.background = "transparent"; }}
                     onClick={() => setListSelected(recipe)}
                   >
                     <span className="inline-block w-3 h-3 rounded-full mr-2 align-middle" style={{ background: recipe.color || "#e5e7eb" }} />
@@ -742,19 +748,22 @@ export default function RecipesPage() {
                 >
                   {/* Pencil icon for edit (top right) */}
                   <button
-                    className="absolute top-4 right-4 text-purple-700 hover:text-purple-900 text-2xl cursor-pointer"
+                    className="absolute top-4 right-4 text-2xl cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = "var(--theme-buttonHover)"}
+                    onMouseLeave={(e) => e.currentTarget.style.color = "var(--theme-main)"}
                     title="Edit Recipe"
                     onClick={() => setEditRecipe(selectedRecipe as Recipe)}
                   >
                     <FaPencilAlt />
                   </button>
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="text-purple-700 text-2xl" />
+                    <Icon className="text-2xl" style={{ color: "var(--theme-main)" }} />
                     <h2 className="text-xl font-bold text-black">
                       {typeof selectedRecipe.name === "string" ? selectedRecipe.name : ""}
                     </h2>
                     {typeof selectedRecipe.mealType === "string" && (
-                      <span className="ml-2 px-2 py-0.5 rounded bg-purple-100 text-purple-700 text-xs font-semibold">
+                      <span className="ml-2 px-2 py-0.5 rounded text-xs font-semibold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>
                         {selectedRecipe.mealType}
                       </span>
                     )}
@@ -763,7 +772,7 @@ export default function RecipesPage() {
                   {Array.isArray(selectedRecipe.tags) && selectedRecipe.tags.length > 0 && (
                     <div className="mb-2 flex flex-wrap gap-1">
                       {selectedRecipe.tags.map((tag: string) => (
-                        <span key={tag} className="bg-purple-50 text-purple-700 text-xs px-2 py-0.5 rounded-full">{tag}</span>
+                        <span key={tag} className="text-xs px-2 py-0.5 rounded-full" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>{tag}</span>
                       ))}
                     </div>
                   )}
@@ -805,14 +814,11 @@ export default function RecipesPage() {
             setShowModal(false);
             // If editing in list view, update listSelected to reflect changes
             if (editRecipe && viewMode === "list") {
-              // Find the updated recipe in the latest recipes array after session update
-              setTimeout(() => {
-                // Use latest recipes from session (after update)
-                const updated = session?.user?.recipes?.find(
-                  r => r.id === editRecipe.id
-                );
+              // Refresh data from context
+              refreshData().then(() => {
+                const updated = userData?.recipes.find((r: Recipe) => r.id === editRecipe.id);
                 if (updated) setListSelected(updated);
-              }, 0);
+              });
             }
             setEditRecipe(null);
           }}

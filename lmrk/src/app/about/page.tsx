@@ -1,11 +1,24 @@
+"use client";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { ThemeController } from "@/theme/ThemeController";
+import type { Session } from "next-auth";
+
 export default function AboutPage() {
+  const { data: sessionData } = useSession();
+  const session = sessionData as Session | null;
+  useEffect(() => {
+    if (session?.user?.preferences?.theme) {
+      const ctrl = ThemeController.getInstance();
+      if (session.user.preferences.theme === "moonlight") ctrl.setMoonlight();
+      else if (session.user.preferences.theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [session?.user?.preferences?.theme]);
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-4"
-      style={{
-        background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)",
-        width: "100vw",
-      }}
+      style={{ background: "var(--theme-pageBg)", width: "100vw" }}
     >
       <div className="bg-white rounded-lg shadow-lg p-8 max-w-xl w-full flex flex-col items-center">
         <h1

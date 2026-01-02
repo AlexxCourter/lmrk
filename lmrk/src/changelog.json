@@ -1,15 +1,33 @@
 {
     "app": "lmrk",
     "release": "Alpha",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "changes": [
+        {
+            "version": "0.1.4",
+            "date": "2025-08-20",
+            "changes": [
+                {
+                    "type": "fixed",
+                    "description": "Refreshing page no longer causes old data to show."
+                },
+                {
+                    "type": "added",
+                    "description": "Added themes: moonlight and mint. Change them in settings. (some colors may still be a work in progress)."
+                },
+                {
+                    "type": "added",
+                    "description": "Step 1 for family sharing with the family group UI."
+                }
+            ]
+        },
         {
             "version": "0.1.3",
             "date": "2025-08-08",
             "changes": [
                 {
                     "type": "added",
-                    "description": "Meal Planner UI implemented. Beta test test premium feature for free."
+                    "description": "Meal Planner UI implemented. Beta test this premium feature for free."
                 },
                 {
                     "type": "improved",

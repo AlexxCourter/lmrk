@@ -1,52 +1,49 @@
 "use client";
-import { useState, useMemo } from "react";
-import { FaTrash, FaSearch } from "react-icons/fa";
+import { useState, useMemo, useEffect } from "react";
+import { FaTrash, FaSearch, FaShoppingCart } from "react-icons/fa";
 import type { Recipe as UserRecipe } from "../../models/User";
-import { ObjectId } from "mongodb";
 import { useSession } from "next-auth/react";
+import { useUserData } from "@/components/UserDataProvider";
+import { ThemeController } from "@/theme/ThemeController";
 
 const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const meals = ["BREAKFAST", "LUNCH", "DINNER"];
-
-// Dummy recipes for sidebar (replace with real data fetch later)
-const dummyRecipes = [
-  { id: "1", name: "Pancakes", color: "#f3e8ff" },
-  { id: "2", name: "Chicken Salad", color: "#dbeafe" },
-  { id: "3", name: "Spaghetti", color: "#fee2e2" },
-  { id: "4", name: "Tacos", color: "#fef9c3" },
-  { id: "5", name: "Veggie Stir Fry", color: "#bbf7d0" },
-];
 
 type Meal = "BREAKFAST" | "LUNCH" | "DINNER";
 type DayPlan = Record<Meal, string | null>;
 
 export default function MealPlannerPage() {
   const { data: sessionData } = useSession();
-  // Session type is flexible, fallback to empty array if not present
-  const userRecipes = (sessionData?.user && 'recipes' in sessionData.user ? (sessionData.user as { recipes?: UserRecipe[] }).recipes : []) || [];
+  const { data: userData } = useUserData();
+  
+  // Apply theme
+  useEffect(() => {
+    const userPreferences = (sessionData?.user as { preferences?: { theme?: string } })?.preferences;
+    const theme = userPreferences?.theme;
+    if (theme) {
+      const ctrl = ThemeController.getInstance();
+      if (theme === "moonlight") ctrl.setMoonlight();
+      else if (theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [sessionData?.user]);
 
-  // Helper to get a string id for any recipe (ObjectId or string)
-  function getRecipeId(recipe: UserRecipe): string {
-    if (!recipe._id) return "";
-    if (typeof recipe._id === "string") return recipe._id;
-    // fallback for ObjectId
-    return recipe._id.toString();
+  // Use cached user data recipes
+  const userRecipes = userData?.recipes || [];
+  
+  // Helper to get a string id for any recipe
+  function getRecipeId(recipe: { id?: string; _id?: string | { toString: () => string } }): string {
+    // Cached recipes have 'id' as string
+    if (recipe.id && typeof recipe.id === "string") return recipe.id;
+    if (recipe._id) {
+      if (typeof recipe._id === "string") return recipe._id;
+      return recipe._id.toString();
+    }
+    return "";
   }
 
-  // Use real user recipes if available, otherwise fallback to dummy
-  const recipes: UserRecipe[] = userRecipes.length > 0
-    ? userRecipes
-    : dummyRecipes.map(r => ({
-        _id: r.id as unknown as ObjectId, // fudge for local dummy
-        name: r.name,
-        icon: 0,
-        description: "",
-        ingredients: [],
-        instructions: [],
-        mealType: undefined,
-        tags: [],
-        color: r.color,
-      }));
+  // Use recipes directly from cached data (they already have id as string)
+  const recipes = userRecipes;
 
   const [mealPlan, setMealPlan] = useState<DayPlan[]>(
     () => days.map(() => ({ BREAKFAST: null, LUNCH: null, DINNER: null }))
@@ -56,6 +53,12 @@ export default function MealPlannerPage() {
   const [deleteMode, setDeleteMode] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sendingToCart, setSendingToCart] = useState(false);
+
+  // Get theme colors
+  const themeColors = ThemeController.getInstance().colors;
+  const textColor = themeColors.menuBarText;
+  const iconColor = themeColors.main;
 
   // Search logic: filter by name or tags
   const filteredRecipes = useMemo(() => {
@@ -85,55 +88,153 @@ export default function MealPlannerPage() {
     );
   }
 
+  // Send meal plan to shopping list
+  async function handleSendToShoppingList() {
+    if (!userData?.activeList) {
+      alert("Please set an active shopping list first!");
+      return;
+    }
+
+    setSendingToCart(true);
+    try {
+      // Collect all unique recipe IDs from the meal plan
+      const recipeIds = new Set<string>();
+      mealPlan.forEach(day => {
+        Object.values(day).forEach(recipeId => {
+          if (recipeId) recipeIds.add(recipeId);
+        });
+      });
+
+      // Send each recipe to the shopping list
+      for (const recipeId of recipeIds) {
+        const recipe = recipes.find(r => getRecipeId(r) === recipeId);
+        if (!recipe) continue;
+
+        const response = await fetch("/api/shopping-lists/add-recipe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ recipeId }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to add recipe: ${recipe.name}`);
+        }
+      }
+
+      alert("Meal plan added to shopping list!");
+    } catch (error) {
+      console.error("Error sending to shopping list:", error);
+      alert("Failed to add meal plan to shopping list. Please try again.");
+    } finally {
+      setSendingToCart(false);
+    }
+  }
+
   // Responsive: show sidebar or drawer
   // const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
 
   return (
-    <div className="flex min-h-screen bg-gray-50 flex-col">
+  <div className="flex min-h-screen flex-col" style={{ background: "var(--theme-pageBg)" }}>
       {/* Meal planner toolbar - now matches meal planner width */}
-      <div className="w-full flex items-center justify-between px-4 py-2 bg-white shadow-sm border-b border-purple-100 mb-2 mx-auto max-w-[1600px]" style={{ minHeight: 40 }}>
+      <div className="w-full flex items-center justify-between px-4 py-2 shadow-sm border-b mb-2 mx-auto max-w-[1600px]" 
+           style={{ 
+             minHeight: 40, 
+             background: "var(--theme-floatingMenuBg)",
+             borderColor: "var(--theme-main)"
+           }}>
         <div className="flex items-center gap-2">
           <button
-            className="p-2 rounded-full hover:bg-purple-100"
+            className="p-2 rounded-full transition-colors"
+            style={{
+              color: iconColor,
+              background: searchOpen ? "var(--theme-main)" : "transparent",
+            }}
             title="Search Recipes"
             onClick={() => setSearchOpen(o => !o)}
+            onMouseEnter={(e) => !searchOpen && (e.currentTarget.style.background = "rgba(var(--theme-main-rgb, 109, 40, 217), 0.1)")}
+            onMouseLeave={(e) => !searchOpen && (e.currentTarget.style.background = "transparent")}
           >
-            <FaSearch className="text-purple-500 text-lg" />
+            <FaSearch className="text-lg" style={{ color: searchOpen ? "#fff" : iconColor }} />
           </button>
           {searchOpen && (
             <input
               autoFocus
               type="text"
-              className="ml-2 px-2 py-1 border border-purple-200 rounded focus:outline-none focus:ring focus:border-purple-400 text-sm"
+              className="ml-2 px-2 py-1 border rounded focus:outline-none focus:ring text-sm"
+              style={{ 
+                borderColor: "var(--theme-main)",
+                color: textColor,
+              }}
               placeholder="Search recipes..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              style={{ minWidth: 180 }}
             />
           )}
         </div>
-        <button
-          className={`p-2 rounded-full hover:bg-red-100 ${deleteMode ? "bg-red-200" : ""}`}
-          title="Delete Mode"
-          onClick={() => setDeleteMode(d => !d)}
-        >
-          <FaTrash className="text-red-500 text-lg" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="p-2 rounded-full transition-colors flex items-center gap-2"
+            style={{
+              color: iconColor,
+              background: "transparent",
+            }}
+            title="Send meal plan to shopping list"
+            onClick={handleSendToShoppingList}
+            disabled={sendingToCart}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(var(--theme-main-rgb, 109, 40, 217), 0.1)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+          >
+            <FaShoppingCart className="text-lg" style={{ color: iconColor }} />
+            {sendingToCart && <span className="text-xs" style={{ color: textColor }}>Sending...</span>}
+          </button>
+          <button
+            className={`p-2 rounded-full transition-colors ${deleteMode ? "bg-red-200" : ""}`}
+            title="Delete Mode"
+            onClick={() => setDeleteMode(d => !d)}
+            onMouseEnter={(e) => !deleteMode && (e.currentTarget.style.background = "rgba(239, 68, 68, 0.1)")}
+            onMouseLeave={(e) => !deleteMode && (e.currentTarget.style.background = deleteMode ? "#fecaca" : "transparent")}
+          >
+            <FaTrash className="text-red-500 text-lg" />
+          </button>
+        </div>
       </div>
       <div className="flex flex-1 w-full max-w-[1600px] mx-auto min-h-0">
         {/* Sidebar (desktop) */}
-        <aside className="hidden md:flex flex-col w-64 bg-white border-r border-purple-200 shadow-lg" style={{ maxHeight: 'calc(100vh - 120px)' }}>
-          <h2 className="text-lg font-bold p-4 border-b border-purple-100">Your Recipes</h2>
+        <aside className="hidden md:flex flex-col w-64 border-r shadow-lg" 
+               style={{ 
+                 maxHeight: 'calc(100vh - 120px)',
+                 background: "var(--theme-floatingMenuBg)",
+                 borderColor: "var(--theme-main)"
+               }}>
+          <h2 className="text-lg font-bold p-4 border-b" 
+              style={{ 
+                color: textColor,
+                borderColor: "var(--theme-main)"
+              }}>Your Recipes</h2>
           <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(100vh - 200px)', minHeight: 0 }}>
+            {filteredRecipes.length === 0 && (
+              <p className="text-center text-sm p-4" style={{ color: textColor, opacity: 0.6 }}>
+                No recipes found. Add recipes to get started!
+              </p>
+            )}
             {filteredRecipes.map(recipe => (
               <div
                 key={getRecipeId(recipe)}
                 draggable
-                onDragStart={() => setDraggedRecipe(recipe)}
-                className="mb-3 p-3 rounded-lg shadow cursor-grab bg-white border border-purple-100 hover:bg-purple-50"
-                style={{ background: recipe.color }}
+                onDragStart={() => setDraggedRecipe({
+                  ...recipe,
+                  icon: typeof recipe.icon === 'number' ? recipe.icon : 0,
+                  description: recipe.description || '',
+                  ingredients: recipe.ingredients || [],
+                  instructions: recipe.instructions || []
+                } as UserRecipe)}
+                className="mb-3 p-3 rounded-lg shadow cursor-grab border hover:shadow-lg transition-shadow"
+                style={{ 
+                  background: recipe.color || "var(--theme-floatingMenuBg)",
+                  borderColor: "var(--theme-main)"
+                }}
               >
-                <span className="font-semibold text-gray-800">{recipe.name}</span>
+                <span className="font-semibold" style={{ color: textColor }}>{recipe.name}</span>
               </div>
             ))}
           </div>
@@ -144,10 +245,16 @@ export default function MealPlannerPage() {
             {days.map((day, dayIdx) => (
               <div
                 key={day}
-                className="flex flex-col md:w-1/7 w-full bg-transparent md:gap-4 gap-2 min-h-0 items-center"
-                style={{ background: 'rgba(245,245,255,0.7)', borderRadius: 12, boxShadow: '0 1px 4px 0 #ede9fe' }}
+                className="flex flex-col md:w-1/7 w-full md:gap-4 gap-2 min-h-0 items-center p-3 rounded-xl shadow-md"
+                style={{ 
+                  background: "var(--theme-floatingMenuBg)",
+                  borderWidth: 2,
+                  borderStyle: "solid",
+                  borderColor: "var(--theme-main)",
+                }}
               >
-                <h3 className="text-center text-md font-bold text-purple-700 mb-2 mt-2 md:mt-0">{day}</h3>
+                <h3 className="text-center text-md font-bold mb-2 mt-2 md:mt-0" 
+                    style={{ color: textColor }}>{day}</h3>
                 {meals.map(meal => {
                   const recipeId = mealPlan[dayIdx][meal as Meal];
                   const recipe = recipes.find(r => getRecipeId(r) === recipeId);
@@ -156,18 +263,23 @@ export default function MealPlannerPage() {
                       key={meal}
                       onDragOver={e => e.preventDefault()}
                       onDrop={() => handleDrop(dayIdx, meal as Meal)}
-                      className="flex items-center justify-center md:min-h-[90px] min-h-[40px] max-h-[50px] bg-white rounded-lg shadow-inner border border-purple-100 mb-2 relative group overflow-hidden w-full max-w-[180px]"
-                      style={{ minWidth: 104, boxShadow: "0 2px 8px 0 #ede9fe, inset 0 2px 8px #ede9fe" }}
+                      className="flex items-center justify-center md:min-h-[90px] min-h-[40px] max-h-[50px] rounded-lg shadow-md border-2 mb-2 relative group overflow-hidden w-full max-w-[180px] transition-all"
+                      style={{ 
+                        minWidth: 104, 
+                        background: recipe ? "#fff" : "rgba(255,255,255,0.5)",
+                        borderColor: recipe ? "var(--theme-main)" : "rgba(var(--theme-main-rgb, 109, 40, 217), 0.3)"
+                      }}
                     >
                       {!recipe && (
-                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs text-purple-400 select-none pointer-events-none">
+                        <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xs select-none pointer-events-none font-medium"
+                              style={{ color: iconColor, opacity: 0.5 }}>
                           {meal}
                         </span>
                       )}
                       {recipe && (
                         <div className="flex flex-row items-center w-full h-full bg-white rounded shadow z-10" style={{ minHeight: 38 }}>
-                          <div className="h-full w-2 rounded-l" style={{ background: recipe.color || '#ede9fe' }} />
-                          <span className="ml-3 font-semibold text-gray-800 truncate" style={{ lineHeight: 1.2 }}>{recipe.name}</span>
+                          <div className="h-full w-2 rounded-l" style={{ background: recipe.color || "var(--theme-main)" }} />
+                          <span className="ml-3 font-semibold truncate" style={{ lineHeight: 1.2, color: textColor }}>{recipe.name}</span>
                         </div>
                       )}
                       {recipe && deleteMode && (
@@ -189,21 +301,39 @@ export default function MealPlannerPage() {
         {/* Drawer (mobile) */}
         <div className="fixed bottom-0 left-0 right-0 z-30 md:hidden">
           <button
-            className="w-full bg-purple-700 text-white py-2 font-semibold rounded-t-lg shadow-lg"
+            className="w-full py-2 font-semibold rounded-t-lg shadow-lg"
+            style={{ background: "var(--theme-menuBarBg)", color: "var(--theme-pageHeading)" }}
             onClick={() => setSidebarOpen(o => !o)}
           >
             {sidebarOpen ? "Hide Recipes" : "Show Recipes"}
           </button>
           {sidebarOpen && (
-            <div className="bg-white border-t border-purple-200 max-h-60 overflow-y-auto p-2 flex gap-2">
+            <div className="border-t max-h-60 overflow-y-auto p-2 flex gap-2" 
+                 style={{ 
+                   background: "var(--theme-floatingMenuBg)",
+                   borderColor: "var(--theme-main)"
+                 }}>
               {filteredRecipes.map(recipe => (
                 <div
                   key={getRecipeId(recipe)}
                   draggable
-                  onDragStart={() => setDraggedRecipe(recipe)}
+                  onDragStart={() => setDraggedRecipe({
+                    ...recipe,
+                    icon: typeof recipe.icon === 'number' ? recipe.icon : 0,
+                    description: recipe.description || '',
+                    ingredients: recipe.ingredients || [],
+                    instructions: recipe.instructions || []
+                  } as UserRecipe)}
                   onTouchStart={e => {
                     const target = e.currentTarget;
-                    target.dataset.holdTimeout = String(window.setTimeout(() => setDraggedRecipe(recipe), 300));
+                    const recipeToSet = {
+                      ...recipe,
+                      icon: typeof recipe.icon === 'number' ? recipe.icon : 0,
+                      description: recipe.description || '',
+                      ingredients: recipe.ingredients || [],
+                      instructions: recipe.instructions || []
+                    } as UserRecipe;
+                    target.dataset.holdTimeout = String(window.setTimeout(() => setDraggedRecipe(recipeToSet), 300));
                   }}
                   onTouchEnd={e => {
                     const target = e.currentTarget;
@@ -212,11 +342,14 @@ export default function MealPlannerPage() {
                       target.dataset.holdTimeout = '';
                     }
                   }}
-                  className="min-w-[120px] p-3 rounded-lg shadow cursor-grab bg-white border border-purple-100 hover:bg-purple-50 touch-manipulation"
-                  style={{ background: recipe.color }}
+                  className="min-w-[120px] p-3 rounded-lg shadow cursor-grab border hover:shadow-lg touch-manipulation transition-shadow"
+                  style={{ 
+                    background: recipe.color || "var(--theme-floatingMenuBg)",
+                    borderColor: "var(--theme-main)"
+                  }}
                 >
-                  <span className="font-semibold text-gray-800">{recipe.name}</span>
-                  <span className="block text-xs text-gray-400 mt-1">Hold to pick up</span>
+                  <span className="font-semibold" style={{ color: textColor }}>{recipe.name}</span>
+                  <span className="block text-xs mt-1" style={{ color: textColor, opacity: 0.6 }}>Hold to pick up</span>
                 </div>
               ))}
             </div>

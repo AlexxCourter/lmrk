@@ -6,9 +6,11 @@ export default function ShoppingEditPage() {
   return (
     <div className="max-w-2xl mx-auto py-10 px-4">
       <button
-        className="mb-6 px-4 py-2 bg-purple-700 text-white rounded hover:bg-purple-800"
+        className="mb-6 px-4 py-2 rounded"
+        style={{ background: "var(--theme-buttonBg)", color: "var(--theme-buttonText)", position: "absolute", top: "80px", left: "32px" }}
+        onMouseEnter={(e) => e.currentTarget.style.background = "var(--theme-buttonHover)"}
+        onMouseLeave={(e) => e.currentTarget.style.background = "var(--theme-buttonBg)"}
         onClick={() => router.push("/tools")}
-        style={{ position: "absolute", top: "80px", left: "32px" }}
       >
         Back
       </button>

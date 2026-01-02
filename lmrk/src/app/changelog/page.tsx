@@ -1,12 +1,23 @@
+"use client";
 import changelog from "../../changelog.json";
+import { useSession } from "next-auth/react";
+import { useEffect } from "react";
+import { ThemeController } from "@/theme/ThemeController";
 
 export default function ChangelogPage() {
+  const { data: session } = useSession();
+  useEffect(() => {
+    const userPreferences = (session?.user as { preferences?: { theme?: string } })?.preferences;
+    const theme = userPreferences?.theme;
+    if (theme) {
+      const ctrl = ThemeController.getInstance();
+      if (theme === "moonlight") ctrl.setMoonlight();
+      else if (theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [session?.user]);
   return (
-    <div className="min-h-screen w-full flex flex-col items-center py-10 px-4"
-      style={{
-        background: "linear-gradient(135deg, #6d28d9 0%, #a78bfa 100%)",
-      }}
-    >
+    <div className="min-h-screen w-full flex flex-col items-center py-10 px-4" style={{ background: "var(--theme-pageBg)" }}>
       <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl w-full">
         <h1 className="text-3xl font-bold mb-4 text-black" style={{ fontFamily: "'Bree Serif', serif" }}>
           Changelog

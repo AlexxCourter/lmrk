@@ -1,4 +1,6 @@
 import { NextApiRequest, NextApiResponse } from "next";
+
+import { ObjectId } from "mongodb";
 import { getDb } from "@/lib/mongodb";
 
 import { getServerSession } from "next-auth/next";
@@ -21,8 +23,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(400).json({ error: "Missing sharedRecipeId" });
       return;
     }
-    // Find the shared recipe
-    const shared = await sharedRecipes.findOne({ _id: sharedRecipeId });
+    // Find the shared recipe (convert to ObjectId if needed)
+    let sharedObjId: ObjectId | null = null;
+    try {
+      sharedObjId = typeof sharedRecipeId === "string" ? new ObjectId(sharedRecipeId) : sharedRecipeId;
+    } catch {
+      res.status(400).json({ error: "Invalid sharedRecipeId" });
+      return;
+    }
+    if (!sharedObjId) {
+      res.status(400).json({ error: "Invalid sharedRecipeId" });
+      return;
+    }
+    const shared = await sharedRecipes.findOne({ _id: sharedObjId });
     if (!shared) {
       res.status(404).json({ error: "Shared recipe not found" });
       return;

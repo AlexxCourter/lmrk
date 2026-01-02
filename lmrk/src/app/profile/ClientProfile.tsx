@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { signIn, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { FaPencilAlt, FaUser, FaUserTie, FaUserNurse, FaUserAstronaut, FaUserSecret, FaUserGraduate } from "react-icons/fa";
 
 // Fix: Only use string keys for PROFILE_ICONS and type for icon
@@ -38,43 +38,24 @@ export default function ClientProfile({
   const [selectedIconId, setSelectedIconId] = useState(profileImage || "FaUser");
   const { update: updateSession } = useSession();
 
-  // Exit edit mode when component unmounts (as router.events is not available in app directory)
-  useEffect(() => {
-    return () => {
-      setEditMode(false);
-    };
-  }, []);
-
   // Get icon component by id
-  const SelectedIcon =
-    PROFILE_ICONS.find(i => i.id === selectedIconId)?.icon || FaUser;
+  const SelectedIcon = PROFILE_ICONS.find(i => i.id === selectedIconId)?.icon || FaUser;
 
-  // Fix: Ensure selectedIconId updates if profileImage prop changes (e.g. after save)
+  // Sync selectedIconId with profileImage prop
   useEffect(() => {
     setSelectedIconId(profileImage || "FaUser");
   }, [profileImage]);
 
-  // Sync editUsername, editBio, and selectedIconId with props when they change
+  // Sync editUsername, editBio, and bioCount with props
   useEffect(() => {
     setEditUsername(username);
   }, [username]);
-
   useEffect(() => {
     setEditBio(bio || "");
     setBioCount(bio.length || 0);
   }, [bio]);
 
-  useEffect(() => {
-    setSelectedIconId(profileImage || "FaUser");
-  }, [profileImage]);
-
-  // Fix: Prevent memory leaks by clearing intervals/timeouts on unmount
-  useEffect(() => {
-    return () => {
-      setShowIconPicker(false);
-    };
-  }, []);
-
+  // Save handler
   async function handleSave() {
     setSaving(true);
     setError("");
@@ -86,7 +67,7 @@ export default function ClientProfile({
           email,
           username: editUsername,
           bio: editBio,
-          profileImage: selectedIconId, // Save icon id
+          profileImage: selectedIconId,
         }),
       });
       if (!res.ok) {
@@ -95,14 +76,6 @@ export default function ClientProfile({
         setSaving(false);
         return;
       }
-      // Refresh session data to reflect updated user info
-      // Use signIn with redirect: false to update session with new user data
-      await signIn("credentials", {
-        redirect: false,
-        email,
-        password: "", // Password is required by credentials provider, but you can handle this in your authorize logic to allow session refresh without password
-        updateProfile: true, // Custom flag you can check in authorize to allow session update without password
-      });
       await updateSession?.();
       setEditMode(false);
     } catch {
@@ -112,7 +85,7 @@ export default function ClientProfile({
     }
   }
 
-  // Fix: Prevent form submission on Enter key in icon picker
+  // Icon picker handler
   const handleIconButtonClick = useCallback((iconId: string) => {
     setSelectedIconId(iconId);
     setShowIconPicker(false);
@@ -120,19 +93,22 @@ export default function ClientProfile({
 
   return (
     <div
-      className="min-h-screen w-full bg-gradient-to-br from-purple-800 to-purple-300 flex flex-col items-center"
+      className="min-h-screen w-full flex flex-col items-center"
+      style={{ background: "var(--theme-pageBg)" }}
     >
-      <div className="w-full max-w-2xl bg-white rounded-xl shadow-lg py-8 px-4 sm:px-6 mt-4 mb-8 sm:mt-10"
+      <div
+        className="w-full max-w-2xl rounded-xl shadow-lg py-8 px-4 sm:px-6 mt-4 mb-8 sm:mt-10"
         style={{
-          // Responsive margin for mobile
+          background: "var(--theme-floatingMenuBg)",
           marginTop: "clamp(16px, 5vw, 40px)",
         }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Profile</h1>
+          <h1 className="text-2xl font-bold" style={{ color: "var(--theme-main)" }}>Profile</h1>
           {editMode ? (
             <button
-              className="bg-purple-700 text-white shadow rounded-full px-5 py-2 z-10 hover:bg-purple-800 font-semibold"
+              className="shadow rounded-full px-5 py-2 z-10 font-semibold"
+              style={{ background: "var(--theme-main)", color: "#fff" }}
               title="Save Profile"
               onClick={handleSave}
               disabled={saving}
@@ -142,19 +118,21 @@ export default function ClientProfile({
             </button>
           ) : (
             <button
-              className="bg-purple-100 shadow rounded-full p-3 z-10 hover:bg-purple-200"
+              className="shadow rounded-full p-3 z-10"
+              style={{ background: "var(--theme-menuBarBg)" }}
               title="Edit Profile"
               onClick={() => setEditMode(true)}
               type="button"
             >
-              <FaPencilAlt className="text-purple-700" />
+              <FaPencilAlt style={{ color: "var(--theme-menuBarText)" }} />
             </button>
           )}
         </div>
         <div className="flex items-center gap-4 mb-6 relative">
           <div className="relative group">
             <div
-              className="w-20 h-20 rounded-full overflow-hidden bg-gray-300 flex items-center justify-center relative cursor-pointer border-2 border-purple-200"
+              className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center relative cursor-pointer border-2"
+              style={{ background: "var(--theme-menuBarBg)", borderColor: "var(--theme-main)" }}
               onClick={e => {
                 if (editMode) {
                   e.stopPropagation();
@@ -165,11 +143,12 @@ export default function ClientProfile({
               aria-label="Choose profile icon"
               role="button"
             >
-              <SelectedIcon className="text-5xl text-purple-700" />
+              <SelectedIcon className="text-5xl" style={{ color: "var(--theme-menuBarText)" }} />
               {/* Pencil icon in bottom right in edit mode */}
               {editMode && (
                 <span
-                  className="absolute bottom-1 right-1 bg-purple-100 rounded-full p-1 shadow cursor-pointer"
+                  className="absolute bottom-1 right-1 rounded-full p-1 shadow cursor-pointer"
+                  style={{ background: "var(--theme-floatingMenuBg)" }}
                   onClick={e => {
                     e.stopPropagation();
                     setShowIconPicker((v) => !v);
@@ -178,7 +157,7 @@ export default function ClientProfile({
                   aria-label="Edit profile icon"
                   role="button"
                 >
-                  <FaPencilAlt className="text-purple-700 text-xs" />
+                  <FaPencilAlt style={{ color: "var(--theme-main)", fontSize: "0.85em" }} />
                 </span>
               )}
             </div>
@@ -186,25 +165,31 @@ export default function ClientProfile({
             {editMode && showIconPicker && (
               <>
                 <div
-                  className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 bg-white border rounded-xl shadow-lg p-4 grid grid-cols-3 gap-4 min-w-[220px]"
+                  className="absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 border rounded-xl shadow-lg p-4 grid grid-cols-3 gap-4 min-w-[220px]"
+                  style={{ background: "var(--theme-floatingMenuBg)", borderColor: "var(--theme-main)" }}
                   onClick={e => e.stopPropagation()}
                 >
                   {PROFILE_ICONS.map((iconObj) => {
                     const Icon = iconObj.icon;
+                    const isSelected = selectedIconId === iconObj.id;
+                    const btnClass =
+                      "w-14 h-14 rounded-full flex items-center justify-center border-2 transition" +
+                      (isSelected ? " bg-opacity-80" : "");
+                    const btnStyle = {
+                      borderColor: isSelected ? "var(--theme-main)" : "var(--theme-menuBarBg)",
+                      background: isSelected ? "var(--theme-main)" : "var(--theme-floatingMenuBg)",
+                    };
                     return (
                       <button
                         key={iconObj.id}
                         type="button"
-                        className={`w-14 h-14 rounded-full flex items-center justify-center border-2 transition ${
-                          selectedIconId === iconObj.id
-                            ? "border-purple-700 bg-purple-100"
-                            : "border-gray-200 bg-white"
-                        }`}
+                        className={btnClass}
+                        style={btnStyle}
                         onClick={() => handleIconButtonClick(iconObj.id)}
                         aria-label={iconObj.id}
                         tabIndex={0}
                       >
-                        <Icon className="text-3xl text-purple-700" />
+                        <Icon className="text-3xl text-white" />
                       </button>
                     );
                   })}
@@ -215,14 +200,15 @@ export default function ClientProfile({
                   onClick={() => setShowIconPicker(false)}
                   tabIndex={-1}
                   aria-hidden="true"
-                />
+                ></div>
               </>
             )}
           </div>
           <div>
             {editMode ? (
               <input
-                className="text-lg font-semibold border-b border-purple-400 focus:outline-none focus:border-purple-700 bg-purple-50 px-1 py-0.5 rounded"
+                className="text-lg font-semibold border-b focus:outline-none bg-transparent px-1 py-0.5 rounded"
+                style={{ borderColor: "var(--theme-main)", color: "var(--theme-main)" }}
                 value={editUsername}
                 onChange={(e) => setEditUsername(e.target.value)}
                 maxLength={32}
@@ -230,16 +216,17 @@ export default function ClientProfile({
                 autoComplete="off"
               />
             ) : (
-              <p className="text-lg font-semibold">{username}</p>
+              <p className="text-lg font-semibold" style={{ color: "var(--theme-main)" }}>{username}</p>
             )}
-            <p className="text-gray-500">{email}</p>
+            <p style={{ color: "var(--theme-menuBarText)", opacity: 0.7 }}>{email}</p>
           </div>
         </div>
         <div className="mb-4">
           {editMode ? (
             <div className="relative">
               <textarea
-                className="w-full border rounded p-2 resize-none min-h-[60px] max-h-[120px] bg-purple-50"
+                className="w-full border rounded p-2 resize-none min-h-[60px] max-h-[120px] bg-transparent"
+                style={{ borderColor: "var(--theme-main)", color: "var(--theme-pageSubText)" }}
                 value={editBio}
                 maxLength={200}
                 onChange={(e) => {
@@ -249,29 +236,29 @@ export default function ClientProfile({
                 rows={3}
                 placeholder="Tell us about yourself..."
               />
-              <span className="absolute bottom-2 right-3 text-xs text-gray-400">
+              <span className="absolute bottom-2 right-3 text-xs" style={{ color: "var(--theme-pageSubText)", opacity: 0.5 }}>
                 {bioCount}/200
               </span>
             </div>
           ) : (
-            <p className="text-gray-700 min-h-[60px]">{bio}</p>
+            <p className="min-h-[60px]" style={{ color: "var(--theme-pageSubText)" }}>{bio}</p>
           )}
         </div>
         {error && (
-          <div className="text-red-600 text-sm mb-2">{error}</div>
+          <div className="text-sm mb-2" style={{ color: "var(--theme-main)" }}>{error}</div>
         )}
         <div className="flex gap-8 mt-2">
-          <div className="bg-purple-100 rounded px-4 py-2 text-center flex-1">
+          <div className="rounded px-4 py-2 text-center flex-1" style={{ background: "var(--theme-main)", color: "#fff" }}>
             <span className="block text-lg font-bold">{recipesCount}</span>
-            <span className="text-xs text-gray-700">Recipes</span>
+            <span className="text-xs" style={{ color: "#fff", opacity: 0.85 }}>Recipes</span>
           </div>
-          <div className="bg-purple-100 rounded px-4 py-2 text-center flex-1">
+          <div className="rounded px-4 py-2 text-center flex-1" style={{ background: "var(--theme-main)", color: "#fff" }}>
             <span className="block text-lg font-bold">{shoppingListsCount}</span>
-            <span className="text-xs text-gray-700">Shopping Lists</span>
+            <span className="text-xs" style={{ color: "#fff", opacity: 0.85 }}>Shopping Lists</span>
           </div>
         </div>
         {editMode && (
-          <div className="mt-6 text-xs text-gray-400 text-center">
+          <div className="mt-6 text-xs text-center" style={{ color: "var(--theme-pageSubText)", opacity: 0.5 }}>
             Changes may take several minutes to take effect.
           </div>
         )}
@@ -279,3 +266,4 @@ export default function ClientProfile({
     </div>
   );
 }
+

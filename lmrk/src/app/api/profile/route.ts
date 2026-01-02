@@ -14,6 +14,29 @@ function sanitize(input: string) {
   return typeof input === "string" ? input.replace(/[<>"'`]/g, "").trim() : "";
 }
 
+export async function GET() {
+  const session = (await getServerSession(
+    nextAuthOptions as Record<string, unknown>
+  )) as { user?: { email?: string } } | null;
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const users = await getUsersCollection();
+  const user = await users.findOne({ email: session.user.email });
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    recipes: user.recipes || [],
+    shoppingLists: user.shoppingLists || [],
+    activeList: user.activeList,
+    groupInfo: user.groupInfo || null,
+  });
+}
+
 export async function POST(req: NextRequest) {
   const session = (await getServerSession(
     nextAuthOptions as Record<string, unknown>

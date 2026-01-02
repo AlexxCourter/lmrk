@@ -1,3 +1,4 @@
+import type { Preferences } from "@/models/User";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from "next-auth/next";
 import type { AuthOptions } from "next-auth/core/types";
@@ -50,11 +51,9 @@ const nextAuthOptions: AuthOptions = {
           profileImage: user.profileImage,
           bio: user.bio,
           preferences: user.preferences,
-          recipes: user.recipes,
-          shoppingLists: user.shoppingLists,
-          passwordHash: user.passwordHash,
           referral: user.referral,
           activeList: typeof user.activeList === "string" ? user.activeList : undefined,
+          groupInfo: user.groupInfo ?? null,
         };
       },
     }),
@@ -93,6 +92,7 @@ const nextAuthOptions: AuthOptions = {
             preferences: {
               theme: "light",
               notifications: false,
+              newsletter: false,
               language: "en",
             },
             passwordHash: "",
@@ -126,13 +126,9 @@ const nextAuthOptions: AuthOptions = {
       session.user.username = typeof token.username === "string" ? token.username : "";
       session.user.profileImage = typeof token.profileImage === "string" ? token.profileImage : "";
       session.user.bio = typeof token.bio === "string" ? token.bio : "";
-      session.user.preferences = token.preferences ?? {};
-      session.user.recipes = Array.isArray(token.recipes) ? token.recipes : [];
-      session.user.shoppingLists = Array.isArray(token.shoppingLists) ? token.shoppingLists : [];
-      session.user.passwordHash = typeof token.passwordHash === "string" ? token.passwordHash : "";
+  session.user.preferences = token.preferences ?? { theme: "default", notifications: false, newsletter: false, language: "en" } as Preferences;
       session.user.referral = typeof token.referral === "string" ? token.referral : "";
-      session.user.activeList = typeof token.activeList === "string" ? token.activeList : undefined;
-
+      session.user.activeList = typeof token.activeList === "string" ? token.activeList : undefined;      session.user.groupInfo = token.groupInfo ?? null;
       session.user.email = typeof token.email === "string" ? token.email : "";
       session.user.name = typeof token.name === "string" ? token.name : "";
       session.user.image = typeof token.image === "string" ? token.image : "";
@@ -151,7 +147,7 @@ const nextAuthOptions: AuthOptions = {
       isNewUser?: boolean;
       session?: any;
     }) {
-      const { token, user } = params;
+      const { token, user, trigger } = params;
       if (user) {
         // On initial sign in, copy user fields to token
         token._id = (user as any)._id ?? "";
@@ -159,17 +155,13 @@ const nextAuthOptions: AuthOptions = {
         token.username = (user as any).username ?? "";
         token.profileImage = (user as any).profileImage ?? "";
         token.bio = (user as any).bio ?? "";
-        token.preferences = (user as any).preferences ?? {};
-        token.recipes = Array.isArray((user as any).recipes) ? (user as any).recipes : [];
-        token.shoppingLists = Array.isArray((user as any).shoppingLists) ? (user as any).shoppingLists : [];
-        token.passwordHash = (user as any).passwordHash ?? "";
+  token.preferences = (user as any).preferences ?? { theme: "default", notifications: false, newsletter: false, language: "en" } as Preferences;
         token.referral = (user as any).referral ?? "";
-        token.activeList = typeof (user as any).activeList === "string" ? (user as any).activeList : undefined;
-        token.email = typeof user.email === "string" ? user.email : "";
+        token.activeList = typeof (user as any).activeList === "string" ? (user as any).activeList : undefined;        token.groupInfo = (user as any).groupInfo ?? null;        token.email = typeof user.email === "string" ? user.email : "";
         token.name = typeof user.name === "string" ? user.name : "";
         token.image = typeof user.image === "string" ? user.image : "";
-      } else if (token.email || token.a_id) {
-        // On subsequent requests, fetch latest user data from DB
+      } else if (trigger === "update" || token.email || token.a_id) {
+        // On session update or subsequent requests, fetch latest user data from DB
         try {
           const users = await getUsersCollection();
           let dbUser = null;
@@ -185,12 +177,10 @@ const nextAuthOptions: AuthOptions = {
             token.username = dbUser.username ?? "";
             token.profileImage = dbUser.profileImage ?? "";
             token.bio = dbUser.bio ?? "";
-            token.preferences = dbUser.preferences ?? {};
-            token.recipes = Array.isArray(dbUser.recipes) ? dbUser.recipes : [];
-            token.shoppingLists = Array.isArray(dbUser.shoppingLists) ? dbUser.shoppingLists : [];
-            token.passwordHash = dbUser.passwordHash ?? "";
+            token.preferences = dbUser.preferences ?? { theme: "default", notifications: false, newsletter: false, language: "en" } as Preferences;
             token.referral = dbUser.referral ?? "";
             token.activeList = typeof dbUser.activeList === "string" ? dbUser.activeList : undefined;
+            token.groupInfo = dbUser.groupInfo ?? null;
             token.name = dbUser.username ?? "";
             token.image = dbUser.profileImage ?? "";
             token.a_id = dbUser.a_id ?? "";

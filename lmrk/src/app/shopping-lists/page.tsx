@@ -1,14 +1,17 @@
 "use client";
 import { useSession } from "next-auth/react";
+import type { Session } from "next-auth";
+import { ThemeController } from "@/theme/ThemeController";
 import { useState, useRef, useEffect } from "react";
 import { FaStar, FaPencilAlt, FaBars } from "react-icons/fa";
 import ShoppingListModal from "@/components/ShoppingListModal";
+import { useUserData } from "@/components/UserDataProvider";
 
 type ShoppingListItem = {
   _id: string;
   name: string;
   checked?: boolean;
-  quantity?: number;
+  quantity?: string | number;
 };
 
 type ShoppingList = {
@@ -18,18 +21,25 @@ type ShoppingList = {
   items: ShoppingListItem[];
 };
 
-type SessionUser = {
-  name?: string | null;
-  email?: string | null;
-  image?: string | null;
-  shoppingLists?: ShoppingList[];
-  activeList?: string;
-};
+// Use Session from next-auth, which includes preferences
 
 export default function ShoppingListPage() {
-  const { data: session, update } = useSession();
-  const shoppingLists = (session?.user as SessionUser)?.shoppingLists || [];
-  const activeListId = (session?.user as SessionUser)?.activeList;
+  const { data: sessionData, update } = useSession();
+  const session = sessionData as Session | null;
+  const { data: userData } = useUserData();
+  
+  // Get shopping lists from context
+  const shoppingLists = userData?.shoppingLists || [];
+  const activeListId = userData?.activeList;
+  
+  useEffect(() => {
+    if (session?.user?.preferences?.theme) {
+      const ctrl = ThemeController.getInstance();
+      if (session.user.preferences.theme === "moonlight") ctrl.setMoonlight();
+      else if (session.user.preferences.theme === "mint") ctrl.setMint();
+      else ctrl.setDefault();
+    }
+  }, [session?.user?.preferences?.theme]);
 
   // Find the index of the active list, or default to 0 if none
   const defaultIdx =
@@ -50,7 +60,7 @@ export default function ShoppingListPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  const selectedList = selectedIdx !== null ? shoppingLists[selectedIdx] : null;
+  const selectedList: ShoppingList | null = selectedIdx !== null ? shoppingLists[selectedIdx] : null;
   const isActive = selectedList && (activeListId === (selectedList._id?.toString?.() || selectedList._id));
 
   // Ensure selectedIdx updates if activeListId or shoppingLists change

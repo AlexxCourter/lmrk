@@ -37,12 +37,12 @@ export default function MenuBar() {
   }, [openMenu]);
 
   return (
-    <nav className="w-full flex items-center justify-between px-6 py-3 border-b-0 bg-purple-700 relative">
+    <nav className="w-full flex items-center justify-between px-6 py-3 border-b-0 relative" style={{ background: "var(--theme-menuBarBg)" }}>
       <div className="flex items-center gap-2">
-        <FaListUl className="text-white text-2xl cursor-pointer" onClick={() => router.push("/")} />
+        <FaListUl className="text-2xl cursor-pointer" style={{ color: "var(--theme-menuBarText)" }} onClick={() => router.push("/")} />
         <span
-          className="font-bold text-lg text-white cursor-pointer"
-          style={{ fontFamily: "'Bree Serif', serif" }}
+          className="font-bold text-lg cursor-pointer"
+          style={{ fontFamily: "'Bree Serif', serif", color: "var(--theme-menuBarText)" }}
           onClick={() => router.push("/")}
         >
           LMRK
@@ -51,8 +51,8 @@ export default function MenuBar() {
       <div className="flex items-center gap-2" ref={menuRef}>
         {/* Dashboard link before profile */}
         <button
-          className="text-white font-semibold hover:underline mr-2 cursor-pointer"
-          style={{ fontFamily: "'Bree Serif', serif" }}
+          className="font-semibold hover:underline mr-2 cursor-pointer"
+          style={{ fontFamily: "'Bree Serif', serif", color: "var(--theme-menuBarText)" }}
           onClick={() => router.push("/tools")}
         >
           Dashboard
@@ -60,7 +60,8 @@ export default function MenuBar() {
         {session?.user ? (
           <div className="relative">
             <button
-              className="ml-2 rounded-full border-2 border-white w-10 h-10 overflow-hidden bg-white flex items-center justify-center cursor-pointer"
+              className="ml-2 rounded-full border-2 w-10 h-10 overflow-hidden flex items-center justify-center cursor-pointer"
+              style={{ borderColor: "var(--theme-menuBarText)", background: "var(--theme-menuBarText)" }}
               title={session.user.name ?? "Profile"}
               onClick={() =>
                 setOpenMenu(openMenu === "profile" ? null : "profile")
@@ -71,7 +72,8 @@ export default function MenuBar() {
               {session.user.image && PROFILE_ICONS[session.user.image] ? (
                 (() => {
                   const Icon = PROFILE_ICONS[session.user.image as string];
-                  return <Icon className="text-2xl text-purple-700" />;
+                  // Use a custom class for theme color
+                  return <Icon className="text-2xl theme-main-color" />;
                 })()
               ) : (
                 <span className="w-full h-full flex items-center justify-center bg-gray-300 rounded-full">
@@ -89,7 +91,8 @@ export default function MenuBar() {
                     Account
                   </div>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/profile");
@@ -98,7 +101,8 @@ export default function MenuBar() {
                     Profile
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/user-settings");
@@ -124,7 +128,8 @@ export default function MenuBar() {
                     Resources
                   </div>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/about");
@@ -133,7 +138,8 @@ export default function MenuBar() {
                     About Us
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/recipe-ideas");
@@ -142,7 +148,8 @@ export default function MenuBar() {
                     Recipe Ideas
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/changelog");
@@ -151,7 +158,8 @@ export default function MenuBar() {
                     Recent Updates
                   </button>
                   <button
-                    className="block w-full text-left px-4 py-2 text-purple-700 hover:bg-purple-100 font-medium cursor-pointer"
+                    className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                    style={{ color: "var(--theme-main)" }}
                     onClick={() => {
                       setOpenMenu(null);
                       router.push("/meal-planner");
@@ -160,12 +168,42 @@ export default function MenuBar() {
                     Meal Planner
                   </button>
                 </div>
+                {/* Admin Section (only for admins) */}
+                {(() => {
+                  // Only show admin section if user email matches ADMIN_EMAIL from env
+                  const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || process.env.ADMIN_EMAIL;
+                  const userEmail = session?.user?.email;
+                  if (userEmail && adminEmail && userEmail === adminEmail) {
+                    return (
+                      <>
+                        <div className="my-2 border-t border-gray-200" />
+                        <div>
+                          <div className="px-4 py-2 text-xs text-gray-400 font-semibold uppercase tracking-wider">
+                            Admin
+                          </div>
+                          <button
+                            className="block w-full text-left px-4 py-2 font-medium cursor-pointer"
+                            style={{ color: "var(--theme-main)" }}
+                            onClick={() => {
+                              setOpenMenu(null);
+                              router.push("/admin/push");
+                            }}
+                          >
+                            Admin Tools
+                          </button>
+                        </div>
+                      </>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
             )}
           </div>
         ) : (
           <button
-            className="ml-2 px-4 py-2 rounded bg-white text-purple-700 hover:bg-gray-100 text-sm font-medium cursor-pointer"
+            className="ml-2 px-4 py-2 rounded text-sm font-medium cursor-pointer"
+            style={{ background: "var(--theme-menuBarText)", color: "var(--theme-main)" }}
             onClick={() => router.push("/log-in")}
           >
             Log in

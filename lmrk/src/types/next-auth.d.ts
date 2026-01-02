@@ -12,14 +12,20 @@ declare module "next-auth" {
         notifications?: boolean;
         language?: string;
       };
-      shoppingLists?: Record<string, unknown>[];
-      recipes?: Record<string, unknown>[];
       passwordHash?: string;
       referral?: string;
       activeList?: string | null;
+      groupInfo?: {
+        groupId?: string;
+        groupEnabled?: boolean;
+        role?: "owner" | "member";
+        familyName?: string;
+        joinedAt?: string;
+      } | null;
       name?: string | null | undefined;
       image?: string | null | undefined;
-      [key: string]: unknown;
+  role?: string;
+  [key: string]: unknown;
     };
   }
   interface User {
@@ -34,13 +40,11 @@ declare module "next-auth" {
       notifications?: boolean;
       language?: string;
     };
-    shoppingLists?: Record<string, unknown>[];
-    recipes?: Record<string, unknown>[];
-    passwordHash?: string;
     referral?: string;
     activeList?: string | null;
-    name?: string | null | undefined;
-    image?: string | null | undefined;
+  name?: string | null | undefined;
+  image?: string | null | undefined;
+  role?: string;
   }
 }
 
@@ -57,13 +61,25 @@ declare module "next-auth/jwt" {
       notifications?: boolean;
       language?: string;
     };
-    shoppingLists?: Record<string, unknown>[];
-    recipes?: Record<string, unknown>[];
-    passwordHash?: string;
     referral?: string;
     activeList?: string | null;
+    groupInfo?: {
+      groupId?: string;
+      groupEnabled?: boolean;
+      role?: "owner" | "member";
+      familyName?: string;
+      joinedAt?: string;
+    } | null;
+    groupInfo?: {
+      groupId?: string;
+      groupEnabled?: boolean;
+      role?: "owner" | "member";
+      familyName?: string;
+      joinedAt?: string;
+    } | null;
     name?: string | null | undefined;
     image?: string | null | undefined;
+    a_id?: string;
     [key: string]: unknown;
   }
 }

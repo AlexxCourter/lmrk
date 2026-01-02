@@ -33,7 +33,7 @@ export default function LoginPage() {
   }
 
   // Show message if coming from family invite
-  const fromFamilyInvite = searchParams.get("from") === "family-invite";
+  const fromFamilyInvite = searchParams?.get("from") === "family-invite";
 
   function handleGoogleSignIn() {
     // Check if there's a pending family invite

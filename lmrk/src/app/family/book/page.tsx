@@ -13,8 +13,8 @@ export default function FamilyCookBookPage() {
   const { data: session, update } = useSession();
   const { data: userData } = useUserData();
   const [groupInfo, setGroupInfo] = useState<{ 
-    cookBook?: { _id?: string; name: string; icon?: number; description?: string; color?: string; mealType?: string; tags?: string[] }[]; 
-    shoppingLists?: { _id?: string; name: string; color?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] }[];
+    cookBook?: { _id?: string; name: string; icon?: number; description?: string; color?: string; mealType?: string; tags?: string[]; ingredients?: unknown[]; instructions?: unknown[] }[]; 
+    shoppingLists?: { _id?: string; name: string; color?: string; dateCreated?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] }[];
     members?: { id: string; username?: string; email: string; profileImage?: string }[];
   } | null>(null);
   const [, setLoadingGroupInfo] = useState(false);
@@ -132,17 +132,10 @@ export default function FamilyCookBookPage() {
     
     setAddingLists(true);
     try {
-      // Ensure all IDs are strings (convert ObjectId to string if needed)
-      const listIdsAsStrings = selectedUserLists.map(id => {
-        if (typeof id === 'string') return id;
-        // If it's an ObjectId object, convert to string
-        return id?.toString?.() || String(id);
-      });
-
       const response = await fetch("/api/family/add-lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listIds: listIdsAsStrings }),
+        body: JSON.stringify({ listIds: selectedUserLists }),
       });
 
       if (response.ok) {

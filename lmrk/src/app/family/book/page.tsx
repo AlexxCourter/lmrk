@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUserData } from "@/components/UserDataProvider";
-import { FaChevronLeft, FaPlus, FaTimes, FaUtensils, FaShoppingCart } from "react-icons/fa";
+import { FaChevronLeft, FaPlus, FaTimes, FaUtensils, FaShoppingCart, FaPencilAlt, FaTrash } from "react-icons/fa";
 import RecipeModal from "@/components/RecipeModal";
 import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal";
 import ShoppingListModal from "@/components/ShoppingListModal";
@@ -39,29 +39,27 @@ export default function FamilyCookBookPage() {
   const [addingLists, setAddingLists] = useState(false);
   const [showListSuccess, setShowListSuccess] = useState(false);
   const [showCreateListModal, setShowCreateListModal] = useState(false);
+  
+  // Recipe to shopping list modal states
+  const [showRecipeToListModal, setShowRecipeToListModal] = useState(false);
+  const [recipeToAdd, setRecipeToAdd] = useState<{ _id?: string; id?: string; name: string; ingredients?: unknown[] } | null>(null);
+  const [selectedTargetListId, setSelectedTargetListId] = useState<string>("");
+  const [sendingToList, setSendingToList] = useState(false);
+  const [showAddToListSuccess, setShowAddToListSuccess] = useState(false);
+
+  // Delete mode states
+  const [deleteMode, setDeleteMode] = useState<"recipes" | "lists" | null>(null);
+  const [selectedForDeletion, setSelectedForDeletion] = useState<string[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Recipe detail view (not edit)
+  const [showRecipeDetail, setShowRecipeDetail] = useState(false);
 
   const user = session?.user as { groupInfo?: { groupEnabled?: boolean } };
   const familyEnabled = !!user?.groupInfo?.groupEnabled;
 
-  // Fetch group info when component mounts
-  useEffect(() => {
-    if (familyEnabled) {
-      fetchGroupInfo();
-    }
-  }, [familyEnabled]);
-
-  // Polling for real-time updates on shopping lists view
-  useEffect(() => {
-    if (!familyEnabled || viewMode !== "lists") return;
-    
-    const interval = setInterval(() => {
-      fetchGroupInfo();
-    }, 3000); // Poll every 3 seconds
-    
-    return () => clearInterval(interval);
-  }, [familyEnabled, viewMode]);
-
-  async function fetchGroupInfo() {
+  const fetchGroupInfo = useCallback(async () => {
     setLoadingGroupInfo(true);
     try {
       const response = await fetch("/api/family/get-group-info");
@@ -74,7 +72,25 @@ export default function FamilyCookBookPage() {
     } finally {
       setLoadingGroupInfo(false);
     }
-  }
+  }, []);
+
+  // Fetch group info when component mounts
+  useEffect(() => {
+    if (familyEnabled) {
+      fetchGroupInfo();
+    }
+  }, [familyEnabled, fetchGroupInfo]);
+
+  // Polling for real-time updates - faster polling and works on both tabs
+  useEffect(() => {
+    if (!familyEnabled) return;
+    
+    const interval = setInterval(() => {
+      fetchGroupInfo();
+    }, 1500); // Poll every 1.5 seconds for near-instant updates
+    
+    return () => clearInterval(interval);
+  }, [familyEnabled, fetchGroupInfo]);
 
   async function handleAddRecipes() {
     if (selectedRecipes.length === 0) return;
@@ -116,10 +132,17 @@ export default function FamilyCookBookPage() {
     
     setAddingLists(true);
     try {
+      // Ensure all IDs are strings (convert ObjectId to string if needed)
+      const listIdsAsStrings = selectedUserLists.map(id => {
+        if (typeof id === 'string') return id;
+        // If it's an ObjectId object, convert to string
+        return id?.toString?.() || String(id);
+      });
+
       const response = await fetch("/api/family/add-lists", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ listIds: selectedUserLists }),
+        body: JSON.stringify({ listIds: listIdsAsStrings }),
       });
 
       if (response.ok) {
@@ -160,11 +183,17 @@ export default function FamilyCookBookPage() {
       }
 
       const result = await response.json();
-      const newListId = result.shoppingList?._id || result.shoppingList?.id;
+      const newListId = result.shoppingList?._id?.toString() || result.shoppingList?.id?.toString();
 
       if (!newListId) {
         throw new Error("No list ID returned");
       }
+
+      // Update session to get the new list in userData
+      await update();
+
+      // Small delay to ensure session is fully updated
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       // Now add it to the family share
       const familyResponse = await fetch("/api/family/add-lists", {
@@ -178,11 +207,10 @@ export default function FamilyCookBookPage() {
         setShowListSuccess(true);
         setTimeout(() => setShowListSuccess(false), 3000);
         
-        // Refresh group info and user data
+        // Refresh group info
         await fetchGroupInfo();
-        await update();
         
-        // Close modals and reset
+        // Close modals and reset - DO NOT redirect
         setShowCreateListModal(false);
         setShowListAddModal(false);
         setListAddStep("choice");
@@ -196,8 +224,159 @@ export default function FamilyCookBookPage() {
     }
   }
 
+  async function handleSendRecipeToShoppingList() {
+    if (!recipeToAdd || !selectedTargetListId) return;
+    
+    setSendingToList(true);
+    try {
+      const recipeId = recipeToAdd._id || recipeToAdd.id;
+      const response = await fetch("/api/family/add-recipe-to-list", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          recipeId,
+          listId: selectedTargetListId 
+        }),
+      });
+
+      if (response.ok) {
+        // Immediately refresh to show new items
+        await fetchGroupInfo();
+        
+        // Show success message
+        setShowAddToListSuccess(true);
+        setTimeout(() => setShowAddToListSuccess(false), 3000);
+        
+        // Close modal and reset
+        setShowRecipeToListModal(false);
+        setRecipeToAdd(null);
+        setSelectedTargetListId("");
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to add recipe to shopping list");
+      }
+    } catch (error) {
+      console.error("Failed to add recipe to shopping list:", error);
+      alert("Failed to add recipe to shopping list. Please try again.");
+    } finally {
+      setSendingToList(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (selectedForDeletion.length === 0) return;
+    
+    setDeleting(true);
+    try {
+      const endpoint = deleteMode === "recipes" 
+        ? "/api/family/delete-recipes" 
+        : "/api/family/delete-lists";
+      
+      const response = await fetch(endpoint, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          ids: selectedForDeletion 
+        }),
+      });
+
+      if (response.ok) {
+        // Refresh group info
+        await fetchGroupInfo();
+        
+        // Reset states
+        setShowDeleteConfirm(false);
+        setDeleteMode(null);
+        setSelectedForDeletion([]);
+        
+        // If we deleted the selected shopping list, clear it
+        if (deleteMode === "lists" && selectedShoppingList && selectedForDeletion.includes(selectedShoppingList._id || '')) {
+          setSelectedShoppingList(null);
+        }
+      } else {
+        const error = await response.json();
+        alert(error.error || "Failed to delete items");
+      }
+    } catch (error) {
+      console.error("Failed to delete:", error);
+      alert("Failed to delete items. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleCheckSharedItem(listId: string, itemId: string, currentChecked: boolean) {
+    // Optimistically update the UI
+    setGroupInfo(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        shoppingLists: prev.shoppingLists?.map(list => {
+          if (list._id?.toString() !== listId) return list;
+          return {
+            ...list,
+            items: list.items?.map(item => {
+              if (item._id?.toString() !== itemId) return item;
+              return { ...item, checked: !currentChecked };
+            })
+          };
+        })
+      };
+    });
+
+    // Also update the selected list if it's the one being modified
+    if (selectedShoppingList?._id === listId) {
+      setSelectedShoppingList(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items?.map(item => {
+            if (item._id?.toString() !== itemId) return item;
+            return { ...item, checked: !currentChecked };
+          })
+        };
+      });
+    }
+
+    // Send update to server
+    try {
+      const response = await fetch("/api/family/check-list-item", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listId,
+          itemId,
+          checked: !currentChecked,
+          lastModified: new Date().toISOString()
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (response.status === 409) {
+          // Conflict - someone else modified it, refresh to get latest
+          console.log("Conflict detected, refreshing...");
+          await fetchGroupInfo();
+        } else {
+          console.error("Failed to update item:", error);
+          // Revert optimistic update on error
+          await fetchGroupInfo();
+        }
+      }
+    } catch (error) {
+      console.error("Error updating item:", error);
+      // Revert optimistic update on error
+      await fetchGroupInfo();
+    }
+  }
+
   const familyRecipes = groupInfo?.cookBook || [];
-  const familyShoppingLists = groupInfo?.shoppingLists || [];
+  const familyShoppingLists = (groupInfo?.shoppingLists || []).sort((a, b) => {
+    // Sort by dateCreated, most recent first
+    const dateA = new Date(a.dateCreated || 0).getTime();
+    const dateB = new Date(b.dateCreated || 0).getTime();
+    return dateB - dateA;
+  });
   const userRecipes = userData?.recipes || [];
   const userShoppingLists = userData?.shoppingLists || [];
 
@@ -206,7 +385,22 @@ export default function FamilyCookBookPage() {
     if (viewMode === "lists" && familyShoppingLists.length > 0 && !selectedShoppingList) {
       setSelectedShoppingList(familyShoppingLists[0]);
     }
-  }, [viewMode, familyShoppingLists]);
+  }, [viewMode, familyShoppingLists, selectedShoppingList]);
+
+  // Sync selectedShoppingList with updated groupInfo data
+  useEffect(() => {
+    if (selectedShoppingList && familyShoppingLists.length > 0) {
+      const updatedList = familyShoppingLists.find(
+        (list: { _id?: string }) => list._id === selectedShoppingList._id
+      );
+      if (updatedList) {
+        // Update with the latest data from groupInfo
+        setSelectedShoppingList(updatedList);
+      }
+    }
+    // Only depend on familyShoppingLists to avoid infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [familyShoppingLists]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-100 to-purple-300">
@@ -288,22 +482,60 @@ export default function FamilyCookBookPage() {
               <h2 className="text-lg font-semibold text-purple-900">
                 Shared Recipes ({familyRecipes.length})
               </h2>
-              {showSuccess && (
-                <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-medium animate-fade-in">
-                  ✓ Recipes added successfully!
-                </div>
-              )}
-              {familyEnabled && (
-                <button
-                  className="bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-800 transition text-sm flex items-center gap-2"
-                  onClick={() => {
-                    setShowAddModal(true);
-                    setAddModalStep("choice");
-                  }}
-                >
-                  <FaPlus /> Add Recipe
-                </button>
-              )}
+              <div className="flex gap-2 items-center">
+                {showSuccess && (
+                  <div className="bg-green-100 text-green-800 px-3 py-1 rounded-lg text-sm font-medium animate-fade-in">
+                    ✓ Recipes added successfully!
+                  </div>
+                )}
+                {familyEnabled && (
+                  <>
+                    {deleteMode === "recipes" && (
+                      <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2 ${
+                          selectedForDeletion.length > 0
+                            ? "bg-red-600 text-white hover:bg-red-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                        onClick={() => {
+                          if (selectedForDeletion.length > 0) {
+                            setShowDeleteConfirm(true);
+                          } else {
+                            setDeleteMode(null);
+                          }
+                        }}
+                      >
+                        {selectedForDeletion.length > 0 ? (
+                          <>Delete {selectedForDeletion.length} Selected</>
+                        ) : (
+                          <>Cancel</>
+                        )}
+                      </button>
+                    )}
+                    {!deleteMode && (
+                      <button
+                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition text-sm flex items-center gap-2"
+                        onClick={() => {
+                          setDeleteMode("recipes");
+                          setSelectedForDeletion([]);
+                        }}
+                        title="Delete recipes"
+                      >
+                        <FaTimes /> Delete Mode
+                      </button>
+                    )}
+                    <button
+                      className="bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-800 transition text-sm flex items-center gap-2"
+                      onClick={() => {
+                        setShowAddModal(true);
+                        setAddModalStep("choice");
+                      }}
+                    >
+                      <FaPlus /> Add Recipe
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {familyRecipes.length === 0 ? (
@@ -314,21 +546,49 @@ export default function FamilyCookBookPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {familyRecipes.map((recipe: { _id?: string; id?: string; icon?: number; color?: string; name: string; description?: string; mealType?: string; tags?: string[] }, idx: number) => {
+                {familyRecipes.map((recipe: { _id?: string; id?: string; icon?: number; color?: string; name: string; description?: string; mealType?: string; tags?: string[]; ingredients?: unknown[] }, idx: number) => {
                   const Icon = RECIPE_ICONS?.[recipe.icon as number]?.icon || RECIPE_ICONS[0].icon;
+                  const recipeId = recipe._id || recipe.id || '';
+                  const isSelectedForDeletion = selectedForDeletion.includes(recipeId);
                   return (
                     <div
                       key={recipe._id || recipe.id || idx}
-                      className="bg-white rounded-lg shadow p-4 flex flex-col justify-between cursor-pointer relative min-h-[220px] max-h-[220px] transition-transform hover:scale-105"
+                      className={`bg-white rounded-lg shadow p-4 flex flex-col justify-between cursor-pointer relative min-h-[220px] max-h-[220px] transition-all ${
+                        deleteMode === "recipes" 
+                          ? isSelectedForDeletion 
+                            ? "ring-4 ring-red-500 bg-red-50" 
+                            : "hover:ring-2 hover:ring-gray-300"
+                          : "hover:scale-105"
+                      }`}
                       style={{
                         cursor: "pointer",
                         borderLeft: recipe.color ? `8px solid ${recipe.color}` : undefined,
                       }}
                       onClick={() => {
-                        setSelectedRecipe(recipe);
-                        setShowRecipeModal(true);
+                        if (deleteMode === "recipes") {
+                          // Toggle selection in delete mode
+                          if (isSelectedForDeletion) {
+                            setSelectedForDeletion(prev => prev.filter(id => id !== recipeId));
+                          } else {
+                            setSelectedForDeletion(prev => [...prev, recipeId]);
+                          }
+                        } else {
+                          // Show detail modal
+                          setSelectedRecipe(recipe);
+                          setShowRecipeDetail(true);
+                        }
                       }}
                     >
+                      {/* Delete mode X icon */}
+                      {deleteMode === "recipes" && (
+                        <div className="absolute top-2 right-2 z-10">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                            isSelectedForDeletion ? "bg-red-600" : "bg-red-100"
+                          }`}>
+                            <FaTimes className={isSelectedForDeletion ? "text-white" : "text-red-600"} size={16} />
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <div className="flex items-start justify-between mb-2">
                           <div
@@ -337,6 +597,38 @@ export default function FamilyCookBookPage() {
                           >
                             <Icon />
                           </div>
+                          {/* Action buttons (not in delete mode) */}
+                          {!deleteMode && (
+                            <div className="flex gap-1">
+                              {/* Edit button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedRecipe(recipe);
+                                  setShowRecipeModal(true);
+                                }}
+                                className="p-2 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-700 transition"
+                                title="Edit recipe"
+                              >
+                                <FaPencilAlt size={14} />
+                              </button>
+                              {/* Shopping cart button */}
+                              {familyShoppingLists.length > 0 && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRecipeToAdd(recipe);
+                                    setSelectedTargetListId(familyShoppingLists[0]._id || "");
+                                    setShowRecipeToListModal(true);
+                                  }}
+                                  className="p-2 rounded-full bg-purple-100 hover:bg-purple-200 text-purple-700 transition"
+                                  title="Add ingredients to shopping list"
+                                >
+                                  <FaShoppingCart size={14} />
+                                </button>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <h3 className="font-bold text-lg text-black leading-tight mb-1">
                           {recipe.name}
@@ -374,17 +666,55 @@ export default function FamilyCookBookPage() {
               <h2 className="text-lg font-semibold text-purple-900">
                 Shared Shopping Lists ({familyShoppingLists.length})
               </h2>
-              {familyEnabled && (
-                <button
-                  className="bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-800 transition text-sm flex items-center gap-2"
-                  onClick={() => {
-                    setShowListAddModal(true);
-                    setListAddStep("choice");
-                  }}
-                >
-                  <FaPlus /> Add List
-                </button>
-              )}
+              <div className="flex gap-2 items-center">
+                {familyEnabled && (
+                  <>
+                    {deleteMode === "lists" && (
+                      <button
+                        className={`px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center gap-2 ${
+                          selectedForDeletion.length > 0
+                            ? "bg-red-600 text-white hover:bg-red-700"
+                            : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                        }`}
+                        onClick={() => {
+                          if (selectedForDeletion.length > 0) {
+                            setShowDeleteConfirm(true);
+                          } else {
+                            setDeleteMode(null);
+                          }
+                        }}
+                      >
+                        {selectedForDeletion.length > 0 ? (
+                          <>Delete {selectedForDeletion.length} Selected</>
+                        ) : (
+                          <>Cancel</>
+                        )}
+                      </button>
+                    )}
+                    {!deleteMode && (
+                      <button
+                        className="bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition text-sm flex items-center gap-2"
+                        onClick={() => {
+                          setDeleteMode("lists");
+                          setSelectedForDeletion([]);
+                        }}
+                        title="Delete lists"
+                      >
+                        <FaTimes /> Delete Mode
+                      </button>
+                    )}
+                    <button
+                      className="bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold hover:bg-purple-800 transition text-sm flex items-center gap-2"
+                      onClick={() => {
+                        setShowListAddModal(true);
+                        setListAddStep("choice");
+                      }}
+                    >
+                      <FaPlus /> Add List
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
 
             {familyShoppingLists.length === 0 ? (
@@ -401,20 +731,51 @@ export default function FamilyCookBookPage() {
                     All Lists ({familyShoppingLists.length})
                   </div>
                   <div className="divide-y">
-                    {familyShoppingLists.map((list: { _id?: string; name: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] }) => (
-                      <button
-                        key={list._id}
-                        onClick={() => setSelectedShoppingList(list)}
-                        className={`w-full p-4 text-left hover:bg-gray-50 transition ${
-                          selectedShoppingList?._id === list._id ? "bg-purple-50 border-l-4 border-purple-700" : ""
-                        }`}
-                      >
-                        <div className="font-medium text-black">{list.name}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {list.items?.length || 0} items
-                        </div>
-                      </button>
-                    ))}
+                    {familyShoppingLists.map((list: { _id?: string; name: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] }) => {
+                      const listId = list._id || '';
+                      const isSelectedForDeletion = selectedForDeletion.includes(listId);
+                      return (
+                        <button
+                          key={list._id}
+                          onClick={() => {
+                            if (deleteMode === "lists") {
+                              // Toggle selection in delete mode
+                              if (isSelectedForDeletion) {
+                                setSelectedForDeletion(prev => prev.filter(id => id !== listId));
+                              } else {
+                                setSelectedForDeletion(prev => [...prev, listId]);
+                              }
+                            } else {
+                              setSelectedShoppingList(list);
+                            }
+                          }}
+                          className={`w-full p-4 text-left transition relative ${
+                            deleteMode === "lists"
+                              ? isSelectedForDeletion
+                                ? "bg-red-50 border-l-4 border-red-600"
+                                : "hover:bg-gray-50"
+                              : selectedShoppingList?._id === list._id 
+                                ? "bg-purple-50 border-l-4 border-purple-700" 
+                                : "hover:bg-gray-50"
+                          }`}
+                        >
+                          {/* Delete mode X icon */}
+                          {deleteMode === "lists" && (
+                            <div className="absolute top-2 right-2">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                isSelectedForDeletion ? "bg-red-600" : "bg-red-100"
+                              }`}>
+                                <FaTimes className={isSelectedForDeletion ? "text-white" : "text-red-600"} size={12} />
+                              </div>
+                            </div>
+                          )}
+                          <div className="font-medium text-black">{list.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {list.items?.length || 0} items
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -432,13 +793,17 @@ export default function FamilyCookBookPage() {
                           {selectedShoppingList.items.map((item: { _id?: string; name: string; quantity?: string; checked?: boolean }, idx: number) => (
                             <div
                               key={item._id || idx}
-                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                              className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
                             >
                               <input
                                 type="checkbox"
                                 checked={item.checked || false}
-                                readOnly
-                                className="w-5 h-5 rounded accent-purple-700"
+                                onChange={() => handleCheckSharedItem(
+                                  selectedShoppingList._id || '',
+                                  item._id || '',
+                                  item.checked || false
+                                )}
+                                className="w-5 h-5 rounded accent-purple-700 cursor-pointer"
                               />
                               <div className={`flex-1 ${item.checked ? "line-through text-gray-400" : "text-black"}`}>
                                 <div className="font-medium">{item.name}</div>
@@ -880,6 +1245,215 @@ export default function FamilyCookBookPage() {
         onSave={handleCreateNewList}
         isEdit={false}
       />
+
+      {/* Recipe to Shopping List Modal */}
+      {showRecipeToListModal && recipeToAdd && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => {
+                setShowRecipeToListModal(false);
+                setRecipeToAdd(null);
+                setSelectedTargetListId("");
+              }}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
+              aria-label="Close"
+            >
+              <FaTimes className="text-gray-600" />
+            </button>
+
+            <h2 className="text-xl font-bold mb-4">Add to Shopping List</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Send ingredients from <span className="font-semibold">{recipeToAdd.name}</span> to a shared shopping list
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium mb-2">Select Shopping List</label>
+              <select
+                value={selectedTargetListId}
+                onChange={(e) => setSelectedTargetListId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                {familyShoppingLists.map((list) => (
+                  <option key={list._id} value={list._id}>
+                    {list.name} ({list.items?.length || 0} items)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {showAddToListSuccess && (
+              <div className="mb-4 bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-medium">
+                ✓ Ingredients added successfully!
+              </div>
+            )}
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowRecipeToListModal(false);
+                  setRecipeToAdd(null);
+                  setSelectedTargetListId("");
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendRecipeToShoppingList}
+                disabled={!selectedTargetListId || sendingToList}
+                className="px-4 py-2 bg-purple-700 text-white rounded-lg font-semibold hover:bg-purple-800 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {sendingToList ? "Sending..." : (
+                  <>
+                    <FaShoppingCart />
+                    Send
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recipe Detail Modal (Read-only) */}
+      {showRecipeDetail && selectedRecipe && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden relative">
+            <button
+              onClick={() => {
+                setShowRecipeDetail(false);
+                setSelectedRecipe(null);
+              }}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition z-10"
+              aria-label="Close"
+            >
+              <FaTimes className="text-gray-600" />
+            </button>
+
+            <div className="p-6 overflow-y-auto max-h-[90vh]">
+              <div className="flex items-center gap-4 mb-4">
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-lg"
+                  style={{ background: selectedRecipe.color || "#f3f4f6" }}
+                >
+                  {(() => {
+                    const Icon = RECIPE_ICONS?.[selectedRecipe.icon as number]?.icon || RECIPE_ICONS[0].icon;
+                    return <Icon />;
+                  })()}
+                </div>
+                <div className="flex-1">
+                  <h2 className="text-3xl font-bold text-black">{selectedRecipe.name}</h2>
+                  {selectedRecipe.mealType && (
+                    <span className="inline-block mt-2 text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">
+                      {selectedRecipe.mealType}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {selectedRecipe.description && (
+                <div className="mb-6">
+                  <p className="text-gray-700">{selectedRecipe.description}</p>
+                </div>
+              )}
+
+              {selectedRecipe.ingredients && (selectedRecipe.ingredients as unknown[]).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold mb-3 text-black">Ingredients</h3>
+                  <div className="space-y-2">
+                    {(selectedRecipe.ingredients as { name: string; quantity?: string; unit?: string }[]).map((ing, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                        <span className="text-purple-700 font-bold">•</span>
+                        <span className="flex-1 text-black">
+                          {ing.quantity && ing.unit ? `${ing.quantity} ${ing.unit} ` : ing.quantity ? `${ing.quantity} ` : ''}
+                          {ing.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRecipe.instructions && (selectedRecipe.instructions as unknown[]).length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-xl font-semibold mb-3 text-black">Instructions</h3>
+                  <div className="space-y-3">
+                    {(selectedRecipe.instructions as string[]).map((instruction, idx) => (
+                      <div key={idx} className="flex gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center font-bold">
+                          {idx + 1}
+                        </div>
+                        <p className="flex-1 text-gray-700 mt-1">{instruction}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedRecipe.tags && (selectedRecipe.tags as string[]).length > 0 && (
+                <div className="flex gap-2 flex-wrap">
+                  <span className="text-sm font-semibold text-gray-700">Tags:</span>
+                  {(selectedRecipe.tags as string[]).map((tag, idx) => (
+                    <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
+              aria-label="Close"
+            >
+              <FaTimes className="text-gray-600" />
+            </button>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <FaTrash className="text-red-600 text-xl" />
+              </div>
+              <h2 className="text-xl font-bold text-black">Confirm Delete</h2>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete {selectedForDeletion.length} {deleteMode === "recipes" ? "recipe" : "list"}
+              {selectedForDeletion.length !== 1 ? "s" : ""} from the family share? This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deleting ? "Deleting..." : (
+                  <>
+                    <FaTrash />
+                    Delete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

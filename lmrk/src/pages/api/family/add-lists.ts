@@ -41,9 +41,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Find the shopping lists from the user's collection
-    const listsToAdd = (user.shoppingLists || []).filter((list: { _id?: { toString(): string }; id?: string }) => 
-      listIds.includes(list._id?.toString() || list.id || '')
-    );
+    const listsToAdd = (user.shoppingLists || []).filter((list: { _id?: { toString(): string }; id?: string }) => {
+      const listIdStr = list._id?.toString() || list.id || '';
+      return listIds.includes(listIdStr);
+    });
 
     if (listsToAdd.length === 0) {
       return res.status(404).json({ error: "No matching shopping lists found" });
@@ -51,12 +52,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Add lists to the group's shopping lists (avoid duplicates)
     const existingListIds = (group.shoppingLists || []).map((l: { _id?: { toString(): string }; id?: string }) => l._id?.toString() || l.id);
-    const newLists = listsToAdd.filter((list: { _id?: { toString(): string }; id?: string }) => 
-      !existingListIds.includes(list._id?.toString() || list.id)
-    );
+    const newLists = listsToAdd.filter((list: { _id?: { toString(): string }; id?: string }) => {
+      const listIdStr = list._id?.toString() || list.id;
+      return !existingListIds.includes(listIdStr);
+    });
 
     if (newLists.length === 0) {
-      return res.status(400).json({ error: "All selected lists are already in the family shopping lists" });
+      // All lists already exist - return success since the desired state is already achieved
+      return res.status(200).json({ 
+        success: true, 
+        addedCount: 0,
+        message: "All selected lists are already in the family shopping lists",
+        lists: []
+      });
     }
 
     await groupsCollection.updateOne(

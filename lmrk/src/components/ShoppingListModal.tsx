@@ -103,10 +103,12 @@ export default function ShoppingListModal({
       dateCreated,
       items,
     };
-    if (isEdit && onSave) {
+    if (onSave) {
+      // If onSave is provided (either for edit or create), use it instead of default behavior
       await onSave(payload);
       onClose();
     } else {
+      // Default behavior: create a new list in user's personal collection
       const res = await fetch("/api/shopping-lists/add", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

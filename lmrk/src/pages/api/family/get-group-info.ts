@@ -54,6 +54,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       invitedAt: inv.invitedAt,
     })) || [],
     cookBook: group.cookBook || [],
+    shoppingLists: group.shoppingLists || [],
     isOwner: user._id!.toString() === group.ownerId,
   });
 }

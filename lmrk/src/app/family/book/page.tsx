@@ -1,9 +1,9 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useUserData } from "@/components/UserDataProvider";
-import { FaChevronLeft, FaPlus, FaTimes, FaUtensils, FaShoppingCart, FaPencilAlt, FaTrash } from "react-icons/fa";
+import { FaChevronLeft, FaPlus, FaTimes, FaUtensils, FaShoppingCart, FaPencilAlt, FaTrash, FaBars, FaSearch } from "react-icons/fa";
 import RecipeModal from "@/components/RecipeModal";
 import { ICONS as RECIPE_ICONS } from "@/components/RecipeModal";
 import ShoppingListModal from "@/components/ShoppingListModal";
@@ -55,6 +55,13 @@ export default function FamilyCookBookPage() {
 
   // Recipe detail view (not edit)
   const [showRecipeDetail, setShowRecipeDetail] = useState(false);
+
+  // Mobile sidebar state for lists view
+  const [listSidebarOpen, setListSidebarOpen] = useState(false);
+  const listSidebarRef = useRef<HTMLDivElement>(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
 
   const user = session?.user as { groupInfo?: { groupEnabled?: boolean } };
   const familyEnabled = !!user?.groupInfo?.groupEnabled;
@@ -364,6 +371,19 @@ export default function FamilyCookBookPage() {
   }
 
   const familyRecipes = groupInfo?.cookBook || [];
+  
+  // Filter recipes based on search query
+  const filteredRecipes = familyRecipes.filter((recipe: { name: string; description?: string; tags?: string[]; mealType?: string }) => {
+    if (!searchQuery.trim()) return true;
+    
+    const query = searchQuery.toLowerCase();
+    const name = recipe.name?.toLowerCase() || "";
+    const description = recipe.description?.toLowerCase() || "";
+    const tags = Array.isArray(recipe.tags) ? recipe.tags.join(" ").toLowerCase() : "";
+    const mealType = recipe.mealType?.toLowerCase() || "";
+    
+    return name.includes(query) || description.includes(query) || tags.includes(query) || mealType.includes(query);
+  });
   const familyShoppingLists = (groupInfo?.shoppingLists || []).sort((a, b) => {
     // Sort by dateCreated, most recent first
     const dateA = new Date(a.dateCreated || 0).getTime();
@@ -394,6 +414,37 @@ export default function FamilyCookBookPage() {
     // Only depend on familyShoppingLists to avoid infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [familyShoppingLists]);
+
+  // Close list sidebar on outside click or swipe left (mobile)
+  useEffect(() => {
+    if (!listSidebarOpen) return;
+    function handleClick(event: MouseEvent) {
+      if (listSidebarRef.current && !listSidebarRef.current.contains(event.target as Node)) {
+        setListSidebarOpen(false);
+      }
+    }
+    let startX: number | null = null;
+    function onTouchMove(ev: TouchEvent) {
+      if (startX === null) startX = ev.touches[0].clientX;
+      const diff = ev.touches[0].clientX - startX;
+      if (diff < -50) { // swipe left
+        setListSidebarOpen(false);
+        document.removeEventListener("touchmove", onTouchMove);
+      }
+    }
+    function handleTouchStart() {
+      document.addEventListener("touchmove", onTouchMove, { passive: false });
+      document.addEventListener("touchend", () => {
+        document.removeEventListener("touchmove", onTouchMove);
+      }, { once: true });
+    }
+    document.addEventListener("mousedown", handleClick as EventListener);
+    document.addEventListener("touchstart", handleTouchStart, { passive: false });
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("touchstart", handleTouchStart);
+    };
+  }, [listSidebarOpen]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-purple-100 to-purple-300">
@@ -471,9 +522,32 @@ export default function FamilyCookBookPage() {
         {/* Recipes View */}
         {viewMode === "recipes" && (
           <>
+            {/* Search Bar */}
+            <div className="mb-4">
+              <div className="relative">
+                <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search recipes by name, description, meal type, or tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    aria-label="Clear search"
+                  >
+                    <FaTimes />
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="mb-4 flex justify-between items-center">
               <h2 className="text-lg font-semibold text-purple-900">
-                Shared Recipes ({familyRecipes.length})
+                Shared Recipes ({filteredRecipes.length}{searchQuery && ` of ${familyRecipes.length}`})
               </h2>
               <div className="flex gap-2 items-center">
                 {showSuccess && (
@@ -514,7 +588,7 @@ export default function FamilyCookBookPage() {
                         }}
                         title="Delete recipes"
                       >
-                        <FaTimes /> Delete Mode
+                        <FaTrash /> Delete Mode
                       </button>
                     )}
                     <button
@@ -524,7 +598,7 @@ export default function FamilyCookBookPage() {
                         setAddModalStep("choice");
                       }}
                     >
-                      <FaPlus /> Add Recipe
+                      <FaPlus /> <span className="hidden sm:inline">Add Recipe</span>
                     </button>
                   </>
                 )}
@@ -537,9 +611,15 @@ export default function FamilyCookBookPage() {
                   No family recipes yet! Add recipes to share them with all family members.
                 </div>
               </div>
+            ) : filteredRecipes.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <div className="text-gray-500 text-sm mb-4">
+                  No recipes found matching "{searchQuery}". Try a different search term.
+                </div>
+              </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {familyRecipes.map((recipe: { _id?: string; id?: string; icon?: number; color?: string; name: string; description?: string; mealType?: string; tags?: string[]; ingredients?: unknown[] }, idx: number) => {
+                {filteredRecipes.map((recipe: { _id?: string; id?: string; icon?: number; color?: string; name: string; description?: string; mealType?: string; tags?: string[]; ingredients?: unknown[] }, idx: number) => {
                   const Icon = RECIPE_ICONS?.[recipe.icon as number]?.icon || RECIPE_ICONS[0].icon;
                   const recipeId = recipe._id || recipe.id || '';
                   const isSelectedForDeletion = selectedForDeletion.includes(recipeId);
@@ -693,7 +773,7 @@ export default function FamilyCookBookPage() {
                         }}
                         title="Delete lists"
                       >
-                        <FaTimes /> Delete Mode
+                        <FaTrash /> Delete Mode
                       </button>
                     )}
                     <button
@@ -703,7 +783,7 @@ export default function FamilyCookBookPage() {
                         setListAddStep("choice");
                       }}
                     >
-                      <FaPlus /> Add List
+                      <FaPlus /> <span className="hidden sm:inline">Add List</span>
                     </button>
                   </>
                 )}
@@ -717,9 +797,9 @@ export default function FamilyCookBookPage() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden flex" style={{ minHeight: "500px" }}>
-                {/* Left: List of lists */}
-                <div className="w-1/3 border-r overflow-y-auto">
+              <div className="bg-white rounded-lg shadow overflow-hidden flex relative" style={{ minHeight: "500px" }}>
+                {/* Desktop: Left side - List of lists */}
+                <div className="hidden md:block w-1/3 border-r overflow-y-auto">
                   <div className="p-4 bg-gray-50 border-b font-semibold text-sm">
                     All Lists ({familyShoppingLists.length})
                   </div>
@@ -772,11 +852,100 @@ export default function FamilyCookBookPage() {
                   </div>
                 </div>
 
-                {/* Right: Selected list details */}
+                {/* Mobile: Sidebar drawer for list of lists */}
+                <div
+                  ref={listSidebarRef}
+                  className={`
+                    fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 flex flex-col
+                    transition-transform duration-300 ease-in-out
+                    ${listSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+                    md:hidden
+                  `}
+                  style={{ boxShadow: listSidebarOpen ? "0 0 20px rgba(0,0,0,0.15)" : undefined }}
+                >
+                  <div className="p-4 bg-gray-50 border-b font-semibold text-sm">
+                    All Lists ({familyShoppingLists.length})
+                  </div>
+                  <div className="divide-y overflow-y-auto flex-1">
+                    {familyShoppingLists.map((list: { _id?: string; name: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] }) => {
+                      const listId = list._id || '';
+                      const isSelectedForDeletion = selectedForDeletion.includes(listId);
+                      return (
+                        <button
+                          key={list._id}
+                          onClick={() => {
+                            if (deleteMode === "lists") {
+                              // Toggle selection in delete mode
+                              if (isSelectedForDeletion) {
+                                setSelectedForDeletion(prev => prev.filter(id => id !== listId));
+                              } else {
+                                setSelectedForDeletion(prev => [...prev, listId]);
+                              }
+                            } else {
+                              setSelectedShoppingList(list);
+                              setListSidebarOpen(false);
+                            }
+                          }}
+                          className={`w-full p-4 text-left transition relative ${
+                            deleteMode === "lists"
+                              ? isSelectedForDeletion
+                                ? "bg-red-50 border-l-4 border-red-600"
+                                : "hover:bg-gray-50"
+                              : selectedShoppingList?._id === list._id 
+                                ? "bg-purple-50 border-l-4 border-purple-700" 
+                                : "hover:bg-gray-50"
+                          }`}
+                        >
+                          {/* Delete mode X icon */}
+                          {deleteMode === "lists" && (
+                            <div className="absolute top-2 right-2">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                                isSelectedForDeletion ? "bg-red-600" : "bg-red-100"
+                              }`}>
+                                <FaTimes className={isSelectedForDeletion ? "text-white" : "text-red-600"} size={12} />
+                              </div>
+                            </div>
+                          )}
+                          <div className="font-medium text-black">{list.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {list.items?.length || 0} items
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Overlay for mobile sidebar */}
+                {listSidebarOpen && (
+                  <div
+                    className="fixed inset-0 z-40 bg-black bg-opacity-20 md:hidden"
+                    onClick={() => setListSidebarOpen(false)}
+                  />
+                )}
+
+                {/* Right side: Selected list details */}
                 <div className="flex-1 p-6 overflow-y-auto">
+                  {/* Mobile: Hamburger button */}
+                  <div className="md:hidden flex items-center gap-3 mb-4">
+                    <button
+                      className="text-2xl text-purple-700 cursor-pointer"
+                      aria-label="Open list menu"
+                      onClick={() => setListSidebarOpen(true)}
+                    >
+                      <FaBars />
+                    </button>
+                    {selectedShoppingList && (
+                      <h3 className="text-xl font-bold text-black flex-1">
+                        {selectedShoppingList.name}
+                      </h3>
+                    )}
+                  </div>
+
                   {selectedShoppingList ? (
                     <>
-                      <h3 className="text-xl font-bold mb-4 text-black">
+                      {/* Desktop: List title */}
+                      <h3 className="hidden md:block text-xl font-bold mb-4 text-black">
                         {selectedShoppingList.name}
                       </h3>
                       {(!selectedShoppingList.items || selectedShoppingList.items.length === 0) ? (
@@ -811,7 +980,7 @@ export default function FamilyCookBookPage() {
                     </>
                   ) : (
                     <div className="text-gray-500 text-center py-12">
-                      Select a list to view details
+                      {familyShoppingLists.length > 0 ? "Select a list to view details" : "No lists available"}
                     </div>
                   )}
                 </div>

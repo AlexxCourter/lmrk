@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import {
   FaAppleAlt, FaCarrot, FaFish, FaDrumstickBite, FaIceCream, FaPizzaSlice,
-  FaBreadSlice, FaCheese, FaEgg, FaLemon, FaTimes
+  FaBreadSlice, FaCheese, FaEgg, FaLemon, FaTimes, FaTrash
 } from "react-icons/fa";
 
 export const ICONS = [
@@ -72,6 +72,8 @@ export default function RecipeModal({
   const [mealType, setMealType] = useState(initialData?.mealType || "");
   const [tags, setTags] = useState(initialData?.tags || "");
   const [color, setColor] = useState(initialData?.color || "#fff");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const router = useRouter();
   const { update } = useSession();
 
@@ -196,6 +198,40 @@ export default function RecipeModal({
       alert("Failed to save recipe.");
     }
   };
+
+  const handleDelete = async () => {
+    if (!initialData?.id) return;
+    
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/recipes/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: initialData.id }),
+      });
+
+      if (res.ok) {
+        // Refresh session to get updated user data
+        await update();
+        // Close both modals
+        setShowDeleteConfirm(false);
+        onClose();
+        // Navigate to recipes page if not already there
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/recipes")) {
+          router.push("/recipes");
+        }
+      } else {
+        alert("Failed to delete recipe.");
+        setDeleting(false);
+      }
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+      alert("Failed to delete recipe.");
+      setDeleting(false);
+    }
+  };
+
+  const isEdit = !!initialData?.id;
 
   const Icon = ICONS[iconIdx].icon;
 
@@ -384,6 +420,19 @@ export default function RecipeModal({
                 ))}
               </div>
             </div>
+
+            {/* Delete button - only show when editing */}
+            {isEdit && (
+              <div className="mt-8 pt-5 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full bg-red-100 text-red-700 px-4 py-3 rounded-lg font-semibold hover:bg-red-200 transition text-sm flex items-center justify-center gap-2"
+                >
+                  <FaTrash /> Delete Recipe
+                </button>
+              </div>
+            )}
           </div>
           {/* SCROLLABLE CONTENT END */}
           <div className="flex justify-end mt-2">
@@ -396,6 +445,46 @@ export default function RecipeModal({
           </div>
         </form>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 mx-4">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <FaTrash className="text-red-600 text-xl" />
+              </div>
+              <h2 className="text-xl font-bold text-black">Delete Recipe?</h2>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete <span className="font-semibold">{name}</span>? This action cannot be undone and the recipe will be permanently removed from your account.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deleting ? "Deleting..." : (
+                  <>
+                    <FaTrash />
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

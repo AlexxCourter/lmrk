@@ -3,7 +3,7 @@ import { useSession } from "next-auth/react";
 import type { Session } from "next-auth";
 import { ThemeController } from "@/theme/ThemeController";
 import { useState, useRef, useEffect } from "react";
-import { FaStar, FaPencilAlt, FaBars } from "react-icons/fa";
+import { FaStar, FaPencilAlt, FaBars, FaTrash, FaTimes } from "react-icons/fa";
 import ShoppingListModal from "@/components/ShoppingListModal";
 import { useUserData } from "@/components/UserDataProvider";
 
@@ -55,6 +55,12 @@ export default function ShoppingListPage() {
   const [selectedIdx, setSelectedIdx] = useState<number | null>(defaultIdx);
   const [loading, setLoading] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // Delete mode states
+  const [deleteMode, setDeleteMode] = useState(false);
+  const [selectedForDeletion, setSelectedForDeletion] = useState<string[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Mobile sidebar state
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -168,6 +174,42 @@ export default function ShoppingListPage() {
     setEditModalOpen(false);
   };
 
+  // Handle deleting selected lists
+  const handleDelete = async () => {
+    if (selectedForDeletion.length === 0) return;
+    
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/shopping-lists/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listIds: selectedForDeletion }),
+      });
+
+      if (res.ok) {
+        // Refresh session to get updated user data
+        await update();
+        
+        // Reset states
+        setShowDeleteConfirm(false);
+        setDeleteMode(false);
+        setSelectedForDeletion([]);
+        
+        // If we deleted the selected list, clear it
+        if (selectedList && selectedForDeletion.includes(selectedList._id)) {
+          setSelectedIdx(null);
+        }
+      } else {
+        alert("Failed to delete shopping lists.");
+      }
+    } catch (error) {
+      console.error("Error deleting lists:", error);
+      alert("Failed to delete shopping lists.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-purple-800 to-purple-300">
       <div
@@ -183,31 +225,95 @@ export default function ShoppingListPage() {
           {shoppingLists.length === 0 ? (
             <div className="text-gray-400 text-sm">No shopping lists yet.</div>
           ) : (
-            <ul className="space-y-2 flex-1 overflow-y-auto">
-              {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
-                const isListActive = activeListId === (list._id?.toString?.() || list._id);
-                return (
-                  <li
-                    key={list._id ? String(list._id) : String(idx)}
-                    className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 ${
-                      selectedIdx === idx
-                        ? "border-purple-700"
-                        : "border-white"
-                    } flex items-center justify-between`}
-                    style={{
-                      background: typeof list.color === "string" ? list.color : "#fff",
-                      cursor: "pointer",
+            <>
+              <ul className="space-y-2 flex-1 overflow-y-auto">
+                {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
+                  const isListActive = activeListId === (list._id?.toString?.() || list._id);
+                  const listId = list._id ? String(list._id) : String(idx);
+                  const isSelectedForDeletion = deleteMode && selectedForDeletion.includes(listId);
+                  return (
+                    <li
+                      key={listId}
+                      className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 relative ${
+                        deleteMode
+                          ? isSelectedForDeletion
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-200 hover:border-gray-300"
+                          : selectedIdx === idx
+                            ? "border-purple-700"
+                            : "border-white"
+                      } flex items-center justify-between`}
+                      style={{
+                        background: deleteMode ? (isSelectedForDeletion ? undefined : "#fff") : (typeof list.color === "string" ? list.color : "#fff"),
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        if (deleteMode) {
+                          // Toggle selection
+                          if (isSelectedForDeletion) {
+                            setSelectedForDeletion(prev => prev.filter(id => id !== listId));
+                          } else {
+                            setSelectedForDeletion(prev => [...prev, listId]);
+                          }
+                        } else {
+                          setSelectedIdx(idx);
+                        }
+                      }}
+                    >
+                      {deleteMode && (
+                        <div className="absolute top-2 right-2">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                            isSelectedForDeletion ? "bg-red-600" : "bg-red-100"
+                          }`}>
+                            <FaTimes className={isSelectedForDeletion ? "text-white" : "text-red-600"} size={10} />
+                          </div>
+                        </div>
+                      )}
+                      <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
+                      {!deleteMode && isListActive && (
+                        <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              
+              {/* Delete button */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                {deleteMode ? (
+                  <button
+                    className={`w-full px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center justify-center gap-2 ${
+                      selectedForDeletion.length > 0
+                        ? "bg-red-600 text-white hover:bg-red-700"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
+                    onClick={() => {
+                      if (selectedForDeletion.length > 0) {
+                        setShowDeleteConfirm(true);
+                      } else {
+                        setDeleteMode(false);
+                      }
                     }}
-                    onClick={() => setSelectedIdx(idx)}
                   >
-                    <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
-                    {isListActive && (
-                      <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
+                    {selectedForDeletion.length > 0 ? (
+                      <>Delete {selectedForDeletion.length} List{selectedForDeletion.length !== 1 ? "s" : ""}</>
+                    ) : (
+                      <>Cancel</>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
+                  </button>
+                ) : (
+                  <button
+                    className="w-full bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition text-sm flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setDeleteMode(true);
+                      setSelectedForDeletion([]);
+                    }}
+                  >
+                    <FaTrash /> Delete Lists
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
         {/* Sidebar for mobile */}
@@ -225,34 +331,97 @@ export default function ShoppingListPage() {
           {shoppingLists.length === 0 ? (
             <div className="text-gray-400 text-sm">No shopping lists yet.</div>
           ) : (
-            <ul className="space-y-2 flex-1 overflow-y-auto">
-              {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
-                const isListActive = activeListId === (list._id?.toString?.() || list._id);
-                return (
-                  <li
-                    key={list._id ? String(list._id) : String(idx)}
-                    className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 ${
-                      selectedIdx === idx
-                        ? "border-purple-700"
-                        : "border-white"
-                    } flex items-center justify-between`}
-                    style={{
-                      background: typeof list.color === "string" ? list.color : "#fff",
-                      cursor: "pointer",
-                    }}
+            <>
+              <ul className="space-y-2 flex-1 overflow-y-auto">
+                {shoppingLists.map((list: Record<string, unknown>, idx: number) => {
+                  const isListActive = activeListId === (list._id?.toString?.() || list._id);
+                  const listId = list._id ? String(list._id) : String(idx);
+                  const isSelectedForDeletion = deleteMode && selectedForDeletion.includes(listId);
+                  return (
+                    <li
+                      key={listId}
+                      className={`px-3 py-2 rounded cursor-pointer transition font-medium border-2 relative ${
+                        deleteMode
+                          ? isSelectedForDeletion
+                            ? "border-red-500 bg-red-50"
+                            : "border-gray-200 hover:border-gray-300"
+                          : selectedIdx === idx
+                            ? "border-purple-700"
+                            : "border-white"
+                      } flex items-center justify-between`}
+                      style={{
+                        background: deleteMode ? (isSelectedForDeletion ? undefined : "#fff") : (typeof list.color === "string" ? list.color : "#fff"),
+                        cursor: "pointer",
+                      }}
+                      onClick={() => {
+                        if (deleteMode) {
+                          // Toggle selection
+                          if (isSelectedForDeletion) {
+                            setSelectedForDeletion(prev => prev.filter(id => id !== listId));
+                          } else {
+                            setSelectedForDeletion(prev => [...prev, listId]);
+                          }
+                        } else {
+                          setSelectedIdx(idx);
+                          setSidebarOpen(false);
+                        }
+                      }}
+                    >
+                      {deleteMode && (
+                        <div className="absolute top-2 right-2">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                            isSelectedForDeletion ? "bg-red-600" : "bg-red-100"
+                          }`}>
+                            <FaTimes className={isSelectedForDeletion ? "text-white" : "text-red-600"} size={10} />
+                          </div>
+                        </div>
+                      )}
+                      <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
+                      {!deleteMode && isListActive && (
+                        <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+              
+              {/* Delete button */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                {deleteMode ? (
+                  <button
+                    className={`w-full px-4 py-2 rounded-lg font-semibold transition text-sm flex items-center justify-center gap-2 ${
+                      selectedForDeletion.length > 0
+                        ? "bg-red-600 text-white hover:bg-red-700"
+                        : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    }`}
                     onClick={() => {
-                      setSelectedIdx(idx);
-                      setSidebarOpen(false);
+                      if (selectedForDeletion.length > 0) {
+                        setShowDeleteConfirm(true);
+                        setSidebarOpen(false);
+                      } else {
+                        setDeleteMode(false);
+                      }
                     }}
                   >
-                    <span>{typeof list.name === "string" && list.name.length > 0 ? list.name : `List ${idx + 1}`}</span>
-                    {isListActive && (
-                      <FaStar className="ml-2 text-yellow-400 text-base" title="Active list" />
+                    {selectedForDeletion.length > 0 ? (
+                      <>Delete {selectedForDeletion.length} List{selectedForDeletion.length !== 1 ? "s" : ""}</>
+                    ) : (
+                      <>Cancel</>
                     )}
-                  </li>
-                );
-              })}
-            </ul>
+                  </button>
+                ) : (
+                  <button
+                    className="w-full bg-red-100 text-red-700 px-4 py-2 rounded-lg font-semibold hover:bg-red-200 transition text-sm flex items-center justify-center gap-2"
+                    onClick={() => {
+                      setDeleteMode(true);
+                      setSelectedForDeletion([]);
+                    }}
+                  >
+                    <FaTrash /> Delete Lists
+                  </button>
+                )}
+              </div>
+            </>
           )}
         </div>
         {/* Overlay for mobile sidebar */}
@@ -426,6 +595,54 @@ export default function ShoppingListPage() {
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative">
+            <button
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition"
+              aria-label="Close"
+            >
+              <FaTimes className="text-gray-600" />
+            </button>
+
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <FaTrash className="text-red-600 text-xl" />
+              </div>
+              <h2 className="text-xl font-bold text-black">Delete Lists?</h2>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete {selectedForDeletion.length} shopping list{selectedForDeletion.length !== 1 ? "s" : ""}? This action cannot be undone and {selectedForDeletion.length !== 1 ? "these lists" : "this list"} will be permanently removed from your account.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {deleting ? "Deleting..." : (
+                  <>
+                    <FaTrash />
+                    Delete Permanently
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

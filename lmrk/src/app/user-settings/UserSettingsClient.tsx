@@ -54,6 +54,7 @@ export default function UserSettingsClient() {
   const [enablingFamily, setEnablingFamily] = useState(false);
   const [groupInfo, setGroupInfo] = useState<{ members?: { id: string; username?: string; email: string; role?: string }[]; pendingInvites?: { email: string; invitedAt: string }[] } | null>(null);
   const [, setLoadingGroupInfo] = useState(false);
+  const [resendingInvite, setResendingInvite] = useState<string | null>(null);
 
   // Sync family sharing state with session user
   useEffect(() => {
@@ -80,6 +81,31 @@ export default function UserSettingsClient() {
       console.error("Failed to fetch group info:", error);
     } finally {
       setLoadingGroupInfo(false);
+    }
+  }
+
+  // Resend invite handler
+  async function handleResendInvite(email: string) {
+    setResendingInvite(email);
+    try {
+      const response = await fetch("/api/family/send-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        alert(data.error || "Failed to resend invite");
+      } else {
+        alert("Invite resent successfully!");
+        await fetchGroupInfo();
+      }
+    } catch (error) {
+      console.error("Failed to resend invite:", error);
+      alert("Failed to resend invite");
+    } finally {
+      setResendingInvite(null);
     }
   }
 
@@ -439,20 +465,23 @@ export default function UserSettingsClient() {
               {/* Family Members */}
               {groupInfo && groupInfo.members && groupInfo.members.length > 0 && (
                 <div className="mb-4">
-                  <h4 className="font-semibold text-sm mb-2">Family Members ({groupInfo.members.length})</h4>
+                  <h4 className="font-semibold text-sm mb-2">Active Members ({groupInfo.members.length})</h4>
                   <div className="space-y-2">
                     {groupInfo.members.map((member: { id: string; username?: string; email: string; role?: string }) => (
-                      <div key={member.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>
+                      <div key={member.id} className="flex items-center gap-3 p-2 bg-green-50 rounded border border-green-200">
+                        <div className="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center text-green-800 font-bold">
                           {member.username?.[0]?.toUpperCase() || member.email?.[0]?.toUpperCase()}
                         </div>
                         <div className="flex-1">
                           <div className="text-sm font-medium">{member.username || member.email}</div>
                           <div className="text-xs text-gray-500">{member.email}</div>
                         </div>
-                        {member.role === "owner" && (
-                          <span className="text-xs px-2 py-1 rounded font-semibold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>Owner</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-semibold">Active</span>
+                          {member.role === "owner" && (
+                            <span className="text-xs px-2 py-1 rounded font-semibold" style={{ background: "var(--theme-badgeBg)", color: "var(--theme-badgeText)" }}>Owner</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -475,7 +504,16 @@ export default function UserSettingsClient() {
                             Invited {new Date(invite.invitedAt).toLocaleDateString()}
                           </div>
                         </div>
-                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-semibold">Pending</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded font-semibold">Pending</span>
+                          <button
+                            onClick={() => handleResendInvite(invite.email)}
+                            disabled={resendingInvite === invite.email}
+                            className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded font-semibold hover:bg-blue-200 transition disabled:opacity-50"
+                          >
+                            {resendingInvite === invite.email ? "Sending..." : "Resend"}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

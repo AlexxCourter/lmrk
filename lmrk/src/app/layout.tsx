@@ -9,7 +9,7 @@ export const metadata = {
   title: "LMRK",
   description: "List Manager and Recipe Keeper",
   icons: {
-    icon: "/LMRK-protologo.png",
+    icon: "/lmrk-logo-v2.png",
   },
 };
 

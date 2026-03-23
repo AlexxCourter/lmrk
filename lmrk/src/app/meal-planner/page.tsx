@@ -208,12 +208,12 @@ export default function MealPlannerPage() {
                }}>
           <h2 className="text-lg font-bold p-4 border-b" 
               style={{ 
-                color: textColor,
+                color: "#1f2937",
                 borderColor: "var(--theme-main)"
               }}>Your Recipes</h2>
           <div className="flex-1 overflow-y-auto p-2" style={{ maxHeight: 'calc(100vh - 200px)', minHeight: 0 }}>
             {filteredRecipes.length === 0 && (
-              <p className="text-center text-sm p-4" style={{ color: textColor, opacity: 0.6 }}>
+              <p className="text-center text-sm p-4" style={{ color: "#6b7280", opacity: 0.8 }}>
                 No recipes found. Add recipes to get started!
               </p>
             )}
@@ -234,7 +234,7 @@ export default function MealPlannerPage() {
                   borderColor: "var(--theme-main)"
                 }}
               >
-                <span className="font-semibold" style={{ color: textColor }}>{recipe.name}</span>
+                <span className="font-semibold" style={{ color: "#1f2937" }}>{recipe.name}</span>
               </div>
             ))}
           </div>
@@ -254,7 +254,7 @@ export default function MealPlannerPage() {
                 }}
               >
                 <h3 className="text-center text-md font-bold mb-2 mt-2 md:mt-0" 
-                    style={{ color: textColor }}>{day}</h3>
+                    style={{ color: "#1f2937" }}>{day}</h3>
                 {meals.map(meal => {
                   const recipeId = mealPlan[dayIdx][meal as Meal];
                   const recipe = recipes.find(r => getRecipeId(r) === recipeId);
@@ -279,7 +279,7 @@ export default function MealPlannerPage() {
                       {recipe && (
                         <div className="flex flex-row items-center w-full h-full bg-white rounded shadow z-10" style={{ minHeight: 38 }}>
                           <div className="h-full w-2 rounded-l" style={{ background: recipe.color || "var(--theme-main)" }} />
-                          <span className="ml-3 font-semibold truncate" style={{ lineHeight: 1.2, color: textColor }}>{recipe.name}</span>
+                          <span className="ml-3 font-semibold truncate" style={{ lineHeight: 1.2, color: "#1f2937" }}>{recipe.name}</span>
                         </div>
                       )}
                       {recipe && deleteMode && (
@@ -348,8 +348,8 @@ export default function MealPlannerPage() {
                     borderColor: "var(--theme-main)"
                   }}
                 >
-                  <span className="font-semibold" style={{ color: textColor }}>{recipe.name}</span>
-                  <span className="block text-xs mt-1" style={{ color: textColor, opacity: 0.6 }}>Hold to pick up</span>
+                  <span className="font-semibold" style={{ color: "#1f2937" }}>{recipe.name}</span>
+                  <span className="block text-xs mt-1" style={{ color: "#6b7280" }}>Hold to pick up</span>
                 </div>
               ))}
             </div>

@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { FaUser, FaUserTie, FaUserNurse, FaUserAstronaut, FaUserSecret, FaUserGraduate } from "react-icons/fa";
 import { FaListUl } from "react-icons/fa"; // Use as the LMRK logo icon
+import { useUserData } from "./UserDataProvider";
 
 // Fix: Only use string keys for PROFILE_ICONS
 const PROFILE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -19,7 +20,11 @@ export default function MenuBar() {
   const [openMenu, setOpenMenu] = useState<"profile" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
+  const { data: userData } = useUserData();
   const router = useRouter();
+
+  // Family share state
+  const familyShareEnabled = !!userData?.groupInfo?.groupEnabled;
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -57,6 +62,16 @@ export default function MenuBar() {
         >
           Dashboard
         </button>
+        {/* Family Share link - only shown when family share is enabled */}
+        {familyShareEnabled && (
+          <button
+            className="font-semibold hover:underline mr-2 cursor-pointer"
+            style={{ fontFamily: "'Bree Serif', serif", color: "var(--theme-menuBarText)" }}
+            onClick={() => router.push("/family/book")}
+          >
+            Family Share
+          </button>
+        )}
         {session?.user ? (
           <div className="relative">
             <button

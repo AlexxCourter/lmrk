@@ -32,7 +32,7 @@ export default function FamilyCookBookPage() {
   const [showRecipeModal, setShowRecipeModal] = useState(false);
   
   // Shopping list states
-  const [selectedShoppingList, setSelectedShoppingList] = useState<{ _id?: string; name: string; color?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] } | null>(null);
+  const [selectedShoppingList, setSelectedShoppingList] = useState<{ _id?: string; name: string; color?: string; dateCreated?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] } | null>(null);
   const [showListAddModal, setShowListAddModal] = useState(false);
   const [listAddStep, setListAddStep] = useState<"choice" | "create" | "select">("choice");
   const [selectedUserLists, setSelectedUserLists] = useState<string[]>([]);
@@ -40,7 +40,7 @@ export default function FamilyCookBookPage() {
   const [showListSuccess, setShowListSuccess] = useState(false);
   const [showCreateListModal, setShowCreateListModal] = useState(false);
   const [showEditListModal, setShowEditListModal] = useState(false);
-  const [editingList, setEditingList] = useState<{ _id?: string; name: string; color?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] } | null>(null);
+  const [editingList, setEditingList] = useState<{ _id?: string; name: string; color?: string; dateCreated?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] } | null>(null);
   
   // Recipe to shopping list modal states
   const [showRecipeToListModal, setShowRecipeToListModal] = useState(false);
@@ -1482,7 +1482,12 @@ export default function FamilyCookBookPage() {
           name: editingList.name,
           color: editingList.color,
           dateCreated: editingList.dateCreated,
-          items: editingList.items,
+          items: editingList.items?.map(item => ({
+            name: item.name,
+            quantity: item.quantity || "",
+            checked: item.checked || false,
+            _id: item._id,
+          })),
         } : undefined}
       />
 

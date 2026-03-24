@@ -50,12 +50,14 @@ export default function ShoppingListModal({
   const [name, setName] = useState("");
   const [dateCreated, setDateCreated] = useState(formatDate(new Date()));
   const [items, setItems] = useState<ShoppingListItem[]>([{ name: "", quantity: "", checked: false }]);
+  const [isInitialized, setIsInitialized] = useState(false);
   const router = useRouter();
   const { update } = useSession();
 
   // Prefill fields in edit mode, or reset for new list
+  // Only initialize once when modal opens, don't reset on subsequent initialData changes
   useEffect(() => {
-    if (open) {
+    if (open && !isInitialized) {
       if (initialData) {
         setColor(initialData.color || COLORS[0]);
         setName(initialData.name || "");
@@ -76,8 +78,12 @@ export default function ShoppingListModal({
         setDateCreated(formatDate(new Date()));
         setItems([{ name: "", quantity: "", checked: false }]);
       }
+      setIsInitialized(true);
+    } else if (!open && isInitialized) {
+      // Reset initialization flag when modal closes
+      setIsInitialized(false);
     }
-  }, [initialData, open]);
+  }, [initialData, open, isInitialized]);
 
   if (!open) return null;
 

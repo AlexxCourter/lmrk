@@ -39,6 +39,8 @@ export default function FamilyCookBookPage() {
   const [addingLists, setAddingLists] = useState(false);
   const [showListSuccess, setShowListSuccess] = useState(false);
   const [showCreateListModal, setShowCreateListModal] = useState(false);
+  const [showEditListModal, setShowEditListModal] = useState(false);
+  const [editingList, setEditingList] = useState<{ _id?: string; name: string; color?: string; items?: { _id?: string; name: string; quantity?: string; checked?: boolean }[] } | null>(null);
   
   // Recipe to shopping list modal states
   const [showRecipeToListModal, setShowRecipeToListModal] = useState(false);
@@ -221,6 +223,41 @@ export default function FamilyCookBookPage() {
     } catch (error) {
       console.error("Failed to create and share list:", error);
       alert("Failed to create shopping list. Please try again.");
+    }
+  }
+
+  async function handleEditSharedList(listData: Record<string, unknown>) {
+    if (!editingList?._id) return;
+    
+    try {
+      const response = await fetch("/api/family/update-list", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listId: editingList._id,
+          name: listData.name,
+          color: listData.color,
+          items: listData.items,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update shopping list");
+      }
+
+      // Show success message
+      setShowListSuccess(true);
+      setTimeout(() => setShowListSuccess(false), 3000);
+      
+      // Refresh group info to get updated list
+      await fetchGroupInfo();
+      
+      // Close modal and reset
+      setShowEditListModal(false);
+      setEditingList(null);
+    } catch (error) {
+      console.error("Failed to update shopping list:", error);
+      alert("Failed to update shopping list. Please try again.");
     }
   }
 
@@ -936,18 +973,42 @@ export default function FamilyCookBookPage() {
                       <FaBars />
                     </button>
                     {selectedShoppingList && (
-                      <h3 className="text-xl font-bold text-black flex-1">
-                        {selectedShoppingList.name}
-                      </h3>
+                      <>
+                        <h3 className="text-xl font-bold text-black flex-1">
+                          {selectedShoppingList.name}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setEditingList(selectedShoppingList);
+                            setShowEditListModal(true);
+                          }}
+                          className="p-2 bg-purple-100 rounded-full hover:bg-purple-200 transition"
+                          title="Edit list"
+                        >
+                          <FaPencilAlt className="text-purple-700" size={16} />
+                        </button>
+                      </>
                     )}
                   </div>
 
                   {selectedShoppingList ? (
                     <>
                       {/* Desktop: List title */}
-                      <h3 className="hidden md:block text-xl font-bold mb-4 text-black">
-                        {selectedShoppingList.name}
-                      </h3>
+                      <div className="hidden md:flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-bold text-black">
+                          {selectedShoppingList.name}
+                        </h3>
+                        <button
+                          onClick={() => {
+                            setEditingList(selectedShoppingList);
+                            setShowEditListModal(true);
+                          }}
+                          className="p-2 bg-purple-100 rounded-full hover:bg-purple-200 transition"
+                          title="Edit list"
+                        >
+                          <FaPencilAlt className="text-purple-700" size={16} />
+                        </button>
+                      </div>
                       {(!selectedShoppingList.items || selectedShoppingList.items.length === 0) ? (
                         <div className="text-gray-500 text-sm">No items in this list</div>
                       ) : (
@@ -1406,6 +1467,23 @@ export default function FamilyCookBookPage() {
         onClose={() => setShowCreateListModal(false)}
         onSave={handleCreateNewList}
         isEdit={false}
+      />
+
+      {/* ShoppingListModal for editing shared lists */}
+      <ShoppingListModal
+        open={showEditListModal}
+        onClose={() => {
+          setShowEditListModal(false);
+          setEditingList(null);
+        }}
+        onSave={handleEditSharedList}
+        isEdit={true}
+        initialData={editingList ? {
+          name: editingList.name,
+          color: editingList.color,
+          dateCreated: editingList.dateCreated,
+          items: editingList.items,
+        } : undefined}
       />
 
       {/* Recipe to Shopping List Modal */}
